@@ -1,4 +1,8 @@
+import torch
+import numpy as np
 from math import ceil
+from torchvision import transforms, datasets
+from Boosting import BoostingSampler
 
 
 def FakeSchapireMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxIt=float("inf")):
@@ -70,7 +74,7 @@ def FakeSchapireMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
 
 class FakeWeakLearner:
 
-    def __init__(self, percent_correct = 0.20, dataset_size = 60000, num_labels = 10):
+    def __init__(self, percent_correct = 0.20, dataset_size = 50000, num_labels = 10):
         self.percent_correct = percent_correct
         self.num_labels = 10
         self.dataset_size = dataset_size
@@ -160,7 +164,7 @@ class FakeEnsemble:
 
 def plot_fake_accuracies(wl, wlweights, labels):
     ensemble = FakeEnsemble(wl, wlweights)
-    predictions, last_prediction = ensemble.schapirePredict(np.zeros((60000)), 10)
+    predictions, last_prediction = ensemble.schapirePredict(np.zeros((50000)), 10)
     numWeakLearners = len(predictions)
     wl_range = list(range(1, numWeakLearners + 1))
     wl_accuracies = []

@@ -283,6 +283,7 @@ def SchapireWongMulticlassBoostingMemoryLess(weakLearner, numLearners, dataset, 
     f = np.zeros((m, k))
     
     val_accuracies = []
+    train_accuracies_ensemble = []
 
     for t in range(numLearners):
         print("-"*100)
@@ -330,14 +331,30 @@ def SchapireWongMulticlassBoostingMemoryLess(weakLearner, numLearners, dataset, 
         torch.cuda.empty_cache()
         weakLearnerWeights.append(alpha)
         
-        
+        # grab test accuracy of full ensemble
         ensemble = Ensemble(weakLearners, weakLearnerWeights)
         test_predictions = ensemble.schapirePredict(test_X.to(torch.device('cuda:0')), 10)
         new_val_accuracy = (test_predictions == test_y.numpy()).astype(int).sum()/len(test_predictions)
         print("After newest WL score is: ", new_val_accuracy)
         val_accuracies.append(new_val_accuracy)
         
-    return weakLearners, weakLearnerWeights, val_accuracies
+        #grad train accuracy to sanity check
+        totalIts = 0
+        trainAccForEnsemble = 0
+        for data in train_loader_default:
+            train_X_default = data[0]
+            train_Y_default = data[1]
+            
+            train_predictions = ensemble.schapirePredict(train_X_default.to(torch.device('cuda:0')), 10)
+            trainAccForEnsemble += (train_predictions == train_Y_default.numpy()).astype(int).sum()/len(train_predictions)
+            totalIts+=1
+            if totalIts > 3:
+                break
+        train_accuracies_ensemble.append(trainAccForEnsemble/totalIts)
+        print("After newest WL training score is: ", trainAccForEnsemble/totalIts)
+        
+        
+    return weakLearners, weakLearnerWeights, val_accuracies, train_accuracies_ensemble
 
 class Ensemble:
     def __init__(self, weakLearners, weakLearnerWeights):
@@ -458,7 +475,7 @@ def runMemlessCifarBoosting(numWL, maxIt, epochs):
     # class.fit
     # from pytorch_memlab import LineProfiler
 
-    wl, wlweights, val_accuracies = SchapireWongMulticlassBoostingMemoryLess(WongNeuralNetCIFAR10, numWL, datasets.CIFAR10, advDelta=0, alphaTol=1e-10, adv=False, maxIt=maxIt, predictionWeights=False, epochs=1)
+    wl, wlweights, val_accuracies, train_accuracies_ensemble = SchapireWongMulticlassBoostingMemoryLess(WongNeuralNetCIFAR10, numWL, datasets.CIFAR10, advDelta=0, alphaTol=1e-10, adv=False, maxIt=maxIt, predictionWeights=False, epochs=1)
 
 
     # for data in test_loader:
@@ -472,7 +489,7 @@ def runMemlessCifarBoosting(numWL, maxIt, epochs):
     predictions = ensemble.schapirePredict(val_X.to(torch.device('cuda:0')), 10)
     print("Finished With: ", (predictions == val_y.numpy()).astype(int).sum()/len(predictions))
     print("In ", (datetime.now()-t0).total_seconds(), " s")
-    return wl, wlweights, val_accuracies
+    return wl, wlweights, val_accuracies, train_accuracies_ensemble
         
 # def plot_accuracies(val_accuracies):
 #     num_weak_learners = len(val_accuracies)

@@ -21,3 +21,8 @@ Possible ways to extend this:
 
 - n_1 weak learners on k_1 iterations, n_2 weak learners on k_2 iterations (can use a large number of weak learners
 for each experiment and use a prefix)
+
+# Dec 13 2020
+
+- add fake weak learner tests
+- changed dataset size to 50000 -- should probably add this as a parameter in the future
