@@ -6,92 +6,9 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from WeakLearners import WongNeuralNetCIFAR10, BoostedWongNeuralNet, Net
-from pytorch_memlab import LineProfiler
+from pytorch_memlab import LineProfiler    
 
-def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset = datasets.CIFAR10, advDelta=0, alphaTol=1e-5, adv=True, maxIt=float("inf"), predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10):
-    def dataset_with_indices(cls):
-        """
-        Modifies the given Dataset class to return a tuple data, target, index
-        instead of just data, target.
-        """
-
-        def __getitem__(self, index):
-            data, target = cls.__getitem__(self, index)
-            return data, target, index
-
-        return type(cls.__name__, (cls,), {
-            '__getitem__': __getitem__,
-        })
-    dataset_index = dataset_with_indices(dataset)
-
-    train_ds_index = dataset_index('./data', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(),]))
-    test_ds_index = dataset_index('./data', train=False, download=True, transform=transforms.Compose([transforms.ToTensor(),]))
-    train_ds_index.targets = torch.tensor(np.array(train_ds_index.targets))
-    test_ds_index.targets = torch.tensor(np.array(test_ds_index.targets))
-
-
-    m = len(train_ds_index)
-    k = len(train_ds_index.classes)
-    # print("m, k: ", m, k)
-
-    batch_size = 100
-    test_loader = torch.utils.data.DataLoader(test_ds_index, batch_size=200, shuffle=False)
-
-    train_loader_default = torch.utils.data.DataLoader(
-      dataset('./data', train=True, download=True, transform=transforms.Compose([
-          transforms.ToTensor(),
-          ])),
-      batch_size=100, shuffle=False)
-
-    weakLearners = []
-    weakLearnerWeights = []
-    f = np.zeros((m, k))
-
-    for t in range(numLearners):
-        print("-"*100)
-        print("Training {}th weak learning".format(t))
-        C_t = np.zeros((m, k))
-        fcorrect = f[np.arange(m), train_ds_index.targets]
-        fexp = np.exp(f - fcorrect[:,None])
-        C_t = fexp.copy()
-        fexp[np.arange(m), train_ds_index.targets] = 0
-        C_t[np.arange(m), train_ds_index.targets] = -np.sum(fexp, axis=1)
-
-        C_tp = np.abs(C_t)
-        train_sampler = BoostingSampler(train_ds_index, C_tp, batch_size)
-        train_loader = torch.utils.data.DataLoader(train_ds_index, sampler=train_sampler, batch_size=batch_size)
-
-        # TODO: This hopefully commenting this out fixes memory problem between weak learners.
-        train_loader_default = torch.utils.data.DataLoader(
-        dataset('./data', train=True, download=True, transform=transforms.Compose([
-                transforms.ToTensor(),
-                ])),
-            batch_size=100, shuffle=False)
-        
-        h_i = weakLearner()
-        h_i.fit(train_loader, test_loader, C_t, adv=adv, maxIt=maxIt, predictionWeights=predictionWeights)
-
-        _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
-        print("targets:", train_ds_index.targets)
-        print("Training Accuracy for weak learner: ", (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions))
-
-
-        a = -C_t[np.arange(m), predictions].sum()
-        b = fexp.sum()
-        
-        delta_t = a / b
-        alpha = 1/2*np.log((1+delta_t)/(1-delta_t))
-        print("Alpha: ", alpha)
-        
-        f[np.arange(m), predictions] += alpha
-        
-        weakLearners.append(h_i)
-        weakLearnerWeights.append(alpha)
-        
-    return weakLearners, weakLearnerWeights
-
-
-def SchapireWongMulticlassBoostingMemoryLess(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxIt=float("inf"), predictionWeights=False, epochs=1, weakLearnerType=WongNeuralNetCIFAR10):
+def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxIt=float("inf"), predictionWeights=False, epochs=1, weakLearnerType=WongNeuralNetCIFAR10):
     def dataset_with_indices(cls):
         """
         Modifies the given Dataset class to return a tuple data, target, index
@@ -135,7 +52,7 @@ def SchapireWongMulticlassBoostingMemoryLess(weakLearner, numLearners, dataset, 
     f = np.zeros((m, k))
     
     val_accuracies = []
-    train_accuracies_ensemble = []
+    train_accuracies = []
 
     for t in range(numLearners):
         print("-"*100)
@@ -153,18 +70,12 @@ def SchapireWongMulticlassBoostingMemoryLess(weakLearner, numLearners, dataset, 
         # Trying out the old train_loader to see if dis works
 
         # TODO: This hopefully commenting this out fixes memory problem between weak learners.
-        train_loader_default = torch.utils.data.DataLoader(
-        dataset('./data', train=True, download=True, transform=transforms.Compose([
-                transforms.ToTensor(),
-                ])),
-            batch_size=100, shuffle=False)
         
         h_i = weakLearner()
         h_i.fit(train_loader, test_loader, C_t, adv=adv, maxIt=maxIt, predictionWeights=predictionWeights, epochs=epochs)
 
         _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
-        print("targets:", train_ds_index.targets)
-        print("Full Accuracy: ", (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions))
+        print("Training accuracy of weak learner: ", (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions))
 
         a = -C_t[np.arange(m), predictions].sum()
         b = fexp.sum()
@@ -188,25 +99,12 @@ def SchapireWongMulticlassBoostingMemoryLess(weakLearner, numLearners, dataset, 
         
         # grab test accuracy of full ensemble
         ensemble = Ensemble(weakLearners, weakLearnerWeights, weakLearnerType=weakLearnerType)
-        test_predictions = ensemble.schapirePredict(test_X.to(torch.device('cuda:0')), 10)
-        new_val_accuracy = (test_predictions == test_y.numpy()).astype(int).sum()/len(test_predictions)
-        print("After newest WL score is: ", new_val_accuracy)
+        new_val_accuracy = ensemble.calc_accuracy(dataset, train=False)
+        new_train_accuracy = ensemble.calc_accuracy(dataset, train=True)
         val_accuracies.append(new_val_accuracy)
-        
-        #grad train accuracy to sanity check
-        totalIts = 0
-        trainAccForEnsemble = 0
-        for data in train_loader_default:
-            train_X_default = data[0]
-            train_Y_default = data[1]
-            
-            train_predictions = ensemble.schapirePredict(train_X_default.to(torch.device('cuda:0')), 10)
-            trainAccForEnsemble += (train_predictions == train_Y_default.numpy()).astype(int).sum()/len(train_predictions)
-            totalIts+=1
-            if totalIts > 3:
-                break
-        train_accuracies_ensemble.append(trainAccForEnsemble/totalIts)
-        print("After newest WL training score is: ", trainAccForEnsemble/totalIts)
+        train_accuracies.append(new_train_accuracy)
+        print("After newest WL validation score is: ", new_val_accuracy)
+        print("After newest WL training score is: ", new_train_accuracy)
         
         
     return weakLearners, weakLearnerWeights, val_accuracies, train_accuracies_ensemble
@@ -251,6 +149,26 @@ class Ensemble:
         
             predictions[i] = np.argmax(np.array(F_Tx))
         return predictions
+    
+    def calc_accuracy(self, dataset, num_batches = 15, train=True):
+        totalIts = 0
+        loader = torch.utils.data.DataLoader(
+            dataset('./data', train=train, download=True, transform=transforms.Compose([
+            transforms.ToTensor(),
+            ])),
+            batch_size=100, shuffle=True)
+        
+        accuracy = 0
+        for data in loader:
+            train_X_default = data[0]
+            train_Y_default = data[1]
+            
+            predictions = self.schapirePredict(train_X_default.to(torch.device('cuda:0')), 10)
+            accuracy += (predictions == train_Y_default.numpy()).astype(int).sum()/len(predictions)
+            totalIts+=1
+            if totalIts > num_batches:
+                break
+        return accuracy / totalIts
 
 
 def pytorch_predict(model, test_loader, device):
@@ -308,7 +226,7 @@ class BoostingSampler(Sampler):
     def setC(self, C):
         self.C = C
 
-def runMemlessBoosting(numWL, maxIt, epochs, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10):
+def runBoosting(numWL, maxIt, epochs, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10):
     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
                 ]))
@@ -326,7 +244,7 @@ def runMemlessBoosting(numWL, maxIt, epochs, dataset=datasets.CIFAR10, weakLearn
 
     t0 = datetime.now()
 
-    wl, wlweights, val_accuracies, train_accuracies_ensemble = SchapireWongMulticlassBoostingMemoryLess(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv=False, maxIt=maxIt, predictionWeights=False, epochs=1, weakLearnerType=weakLearnerType)
+    wl, wlweights, val_accuracies, train_accuracies_ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv=False, maxIt=maxIt, predictionWeights=False, epochs=1, weakLearnerType=weakLearnerType)
 
     ensemble = Ensemble(wl, wlweights, weakLearnerType = weakLearnerType)
 
