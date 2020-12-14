@@ -103,6 +103,153 @@ class WongNeuralNet(BaseNeuralNet):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+class BoostedWongNeuralNet(BaseNeuralNet):
+
+    def __init__(self):
+        super().__init__(Net)
+
+    def fit(self, train_loader, test_loader, C, alpha = 0.375, epochs = 1, lr_max = 5e-3, adv=True, maxIt = float("inf"), predictionWeights=False):
+        cnt = 0
+        val_X = None
+        val_y = None
+        for data in test_loader:
+            if cnt > 1: break
+            val_X = data[0].cuda()
+            val_y = data[1].cuda()
+            cnt += 1
+
+        # optimizer here
+        self.optimizer = torch.optim.Adam(self.model.parameters())
+        lr_schedule = lambda t: np.interp([t], [0, epochs * 2//5, epochs], [0, lr_max, 0])[0]
+
+
+        # test_set, val_set = torch.utils.data.random_split(test_loader.dataset, [9000, 1000])
+        for epoch in range(epochs):
+            print("Epoch:", epoch)
+            for i, data in enumerate(train_loader):
+                # print("In epoch: ", i)
+                lr = lr_schedule(epoch + (i+1)/len(train_loader))
+                self.optimizer.param_groups[0].update(lr=lr)
+                # if cnt % 1000 == 1:
+                # if i == 0:
+                # print("Start with: ", self.validation(val_X, val_y))
+                
+                if cnt % 10 == 1:
+                    # print("Iteration: ", cnt)
+                    # print("memory usage:", cutorch.memory_allocated(0))
+                    self.memory_usage.append(cutorch.memory_allocated(0))
+                    self.iters.append(cnt)
+                    val_loss, val_accuracy = self.validation(val_X, val_y)
+                    self.val_losses.append(val_loss)
+                    self.val_accuracies.append(val_accuracy)
+                    self.losses.append(self.loss.item())
+                cnt += 1
+                X = data[0].cuda()
+                y = data[1].cuda()
+                indices = data[2].cuda()
+                if i > maxIt:
+                    del X
+                    del y
+                    torch.cuda.empty_cache()
+                    print("WL has validation accuracy", self.validation(val_X, val_y))
+                    return
+                if adv:
+                    self.batchUpdate(X, y, C, alpha = alpha)
+                else:
+                    # print("MB(%d), "%(i), end="")
+                    self.batchUpdateNonAdv(X, y, indices, C, alpha=alpha, predictionWeights=predictionWeights)
+                    del X
+                    del y
+        # print("Escaped epoch")
+        print("WL has validation accuracy", self.val_accuracies[-1])
+        print("WL has loss", self.losses[-1])
+
+        torch.cuda.empty_cache()
+
+    def batchUpdate(self, X, y, C, epochs = 1, epsilon = 0.3, alpha = 0.375):
+        def cross_entropy(pred, soft_targets):
+            logsoftmax = nn.LogSoftmax()
+            return torch.mean(torch.sum(- soft_targets * logsoftmax(pred), 1))
+        self.model.train()
+        N = X.size()[0]
+        
+        optimizer = self.optimizer
+
+        # Prints
+        # print("In Batch Update X.shape: ", X.shape)
+        # print("In Batch Update Y.shape: ", Y.shape)
+
+
+        # compute delta (perturbation parameter)
+        optimizer.zero_grad()
+        # compute k_i's that need work (per example)
+        worst_k = np.argmax(C, axis = 1)
+        print("In Batch Update worst_k.shape: ", worst_k.shape)
+        # compute L(x_i, k_i) for all examples
+        delta = torch.zeros_like(X).uniform_(-epsilon, epsilon).cuda()
+        delta.requires_grad = True
+        output = self.model(X + delta)
+        loss = F.cross_entropy(output, worst_k)
+        self.loss = loss
+        # compute delta_k's in batch
+        loss.backward()
+        grad = delta.grad.detach()
+        delta.data = torch.clamp(delta - alpha * torch.sign(grad), -epsilon, epsilon)
+        delta.data = torch.max(torch.min(1-X, delta.data), 0-X)
+        delta = delta.detach()
+
+        # update network parameters
+        output = self.model(torch.clamp(X + delta, 0, 1))
+        loss = F.cross_entropy(output, y)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+  
+    def batchUpdateNonAdv(self, X, y, indices, C, epochs = 1, epsilon = 0.3, alpha = 0.375, predictionWeights=False):
+        self.model.train()
+        N = X.size()[0]
+        optimizer = self.optimizer
+
+        # Prints
+        # print("In Batch Update Y.shape: ", y.shape)
+
+        # compute delta (perturbation parameter)
+        optimizer.zero_grad()
+
+        # update network parameters
+        output = self.model(X)
+
+        if predictionWeights:
+            loss = F.cross_entropy(output, y, reduction="none")
+            Ccopy = C.copy()
+            # Ccopy = Ccopy + Ccopy.min()
+            # Ccopy = Ccopy/Ccopy.max()
+            Ccopy = Ccopy + Ccopy.min(axis=1)[:,None]
+            Ccopy = Ccopy / Ccopy.max(axis=1)[:,None]
+
+            c_tensor = torch.from_numpy(Ccopy).cuda()
+            # print("output.shape", output.shape)
+            # print("output.argmax().shape", output.argmax().shape)
+            output_predicted = output.argmax(dim=1)
+            c_predicted = c_tensor[indices, output_predicted]
+            # print(loss)
+            # print(c_predicted)
+
+
+            loss = loss * (c_predicted)
+            # print(loss)
+            loss = loss.mean()
+        else:
+            loss = F.cross_entropy(output, y)
+
+        self.loss = loss
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    def predict(self, X):
+        return self.model(X)
     
 
     
@@ -211,8 +358,8 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                 if maxIt and cur_iteration >= maxIt: break
                 X, y = data[0].cuda(), data[1].cuda()
                 if i % 10 == 1:
-                    print("Iteration: ", i)
-                    print("memory usage:", cutorch.memory_allocated(0))
+#                     print("Iteration: ", i)
+#                     print("memory usage:", cutorch.memory_allocated(0))
                     self.memory_usage.append(cutorch.memory_allocated(0))
                     # print("memory usage:", cutorch.memory_allocated(0))
                     self.iters.append(i)

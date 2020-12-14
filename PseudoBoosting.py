@@ -3,6 +3,7 @@ import numpy as np
 from math import ceil
 from torchvision import transforms, datasets
 from Boosting import BoostingSampler
+import matplotlib.pyplot as plt
 
 
 def FakeSchapireMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxIt=float("inf")):
@@ -176,7 +177,7 @@ def plot_fake_accuracies(wl, wlweights, train_y):
         wl_accuracies.append(cur_accuracy)
     
     f, ax = plt.subplots()
-    ax.plot(wl_range, wl_accuracies)
+    plt.plot(wl_range, wl_accuracies)
     plt.xlabel('Number of weak learners')
     plt.ylabel('Accuracy')
     plt.title('Accuracy vs. number of weak learners')
