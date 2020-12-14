@@ -162,7 +162,7 @@ class FakeEnsemble:
 
         return all_predictions, all_predictions[-1]
 
-def plot_fake_accuracies(wl, wlweights, labels):
+def plot_fake_accuracies(wl, wlweights, train_y):
     ensemble = FakeEnsemble(wl, wlweights)
     predictions, last_prediction = ensemble.schapirePredict(np.zeros((50000)), 10)
     numWeakLearners = len(predictions)
@@ -171,6 +171,7 @@ def plot_fake_accuracies(wl, wlweights, labels):
     for i in range(numWeakLearners):
         print("numWeakLearners:", numWeakLearners)
         cur_prediction = predictions[i]
+        print("cur_prediction:", cur_prediction)
         cur_accuracy = (cur_prediction == train_y).astype(int).sum()/len(cur_prediction)
         wl_accuracies.append(cur_accuracy)
     
