@@ -26,3 +26,4 @@ for each experiment and use a prefix)
 
 - add fake weak learner tests
 - changed dataset size to 50000 -- should probably add this as a parameter in the future
+- need to debug this further
