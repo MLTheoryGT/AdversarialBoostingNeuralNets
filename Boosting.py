@@ -8,7 +8,15 @@ import matplotlib.pyplot as plt
 from WeakLearners import WongNeuralNetCIFAR10, BoostedWongNeuralNet, Net
 from pytorch_memlab import LineProfiler    
 
-def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxIt=float("inf"), predictionWeights=False, epochs=1, weakLearnerType=WongNeuralNetCIFAR10):
+def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10):
+    """
+        Args:
+            maxSamples: either None or a list for each wl
+    """
+    if maxSamples is None:
+        maxSamples = [500 for i in range(len(numLearners))]
+    assert(len(numLearners) == len(maxSamples))
+    
     def dataset_with_indices(cls):
         """
         Modifies the given Dataset class to return a tuple data, target, index
@@ -54,42 +62,41 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
     val_accuracies = []
     train_accuracies = []
 
-    for t in range(numLearners):
+    for maxSample in maxSamples:
         print("-"*100)
-        print("Training {}th weak learning".format(t))
+        print("Training weak learner {}".format(t))
+        # Boosting matrix update
         C_t = np.zeros((m, k))
         fcorrect = f[np.arange(m), train_ds_index.targets]
         fexp = np.exp(f - fcorrect[:,None])
         C_t = fexp.copy()
         fexp[np.arange(m), train_ds_index.targets] = 0
         C_t[np.arange(m), train_ds_index.targets] = -np.sum(fexp, axis=1)
-
         C_tp = np.abs(C_t)
+        
+        # Set up boosting samplers
         train_sampler = BoostingSampler(train_ds_index, C_tp, batch_size)
         train_loader = torch.utils.data.DataLoader(train_ds_index, sampler=train_sampler, batch_size=batch_size)
-        # Trying out the old train_loader to see if dis works
-
-        # TODO: This hopefully commenting this out fixes memory problem between weak learners.
         
+        # Fit WL on weighted subset of data
         h_i = weakLearner()
-        h_i.fit(train_loader, test_loader, C_t, adv=adv, maxIt=maxIt, predictionWeights=predictionWeights, epochs=epochs)
-
+        h_i.fit(train_loader, test_loader, C_t, adv=adv, maxSample=maxSample, predictionWeights=predictionWeights)
+        
+        # Get training acuracy of WL
         _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
         print("Training accuracy of weak learner: ", (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions))
-
+        
+        # Get alpha for this weak learners
         a = -C_t[np.arange(m), predictions].sum()
         b = fexp.sum()
-        
         delta_t = a / b
         alpha = 1/2*np.log((1+delta_t)/(1-delta_t))
         print("Alpha: ", alpha)
-        
         f[np.arange(m), predictions] += alpha
-
+        
+        # save WL model and alpha
         path_name = 'mnist' if dataset==datasets.MNIST else 'cifar10'
         model_path = f'./models/{path_name}_wl_{t}.pth'
-        
-        
         torch.save(h_i.model.state_dict(), model_path)
         weakLearners.append(model_path)
         del h_i

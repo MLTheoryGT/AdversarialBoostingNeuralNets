@@ -28,6 +28,9 @@ class Net(nn.Module):
     
     
 class WongNeuralNet(BaseNeuralNet):
+    """
+        Note: does not avide by the same maxSample that the other weak learners do since this isn't actually a boosting class
+    """
 
     def __init__(self):
         super().__init__(Net)
@@ -109,46 +112,44 @@ class BoostedWongNeuralNet(BaseNeuralNet):
     def __init__(self):
         super().__init__(Net)
 
-    def fit(self, train_loader, test_loader, C, alpha = 0.375, epochs = 1, lr_max = 5e-3, adv=True, maxIt = float("inf"), predictionWeights=False):
-        cnt = 0
+    def fit(self, train_loader, test_loader, C, alpha = 0.375, epochs = 1, lr_max = 5e-3, adv=True, maxSample=None, predictionWeights=False):
         val_X = None
         val_y = None
         for data in test_loader:
-            if cnt > 1: break
             val_X = data[0].cuda()
             val_y = data[1].cuda()
-            cnt += 1
+            break
 
         # optimizer here
         self.optimizer = torch.optim.Adam(self.model.parameters())
         lr_schedule = lambda t: np.interp([t], [0, epochs * 2//5, epochs], [0, lr_max, 0])[0]
-
+        currSamples = 0
 
         # test_set, val_set = torch.utils.data.random_split(test_loader.dataset, [9000, 1000])
         for epoch in range(epochs):
             print("Epoch:", epoch)
             for i, data in enumerate(train_loader):
+                currSamples += train_loader.batch_size
                 # print("In epoch: ", i)
                 lr = lr_schedule(epoch + (i+1)/len(train_loader))
                 self.optimizer.param_groups[0].update(lr=lr)
-                # if cnt % 1000 == 1:
+
                 # if i == 0:
                 # print("Start with: ", self.validation(val_X, val_y))
                 
-                if cnt % 10 == 1:
-                    # print("Iteration: ", cnt)
+                if i % 10 == 1:
                     # print("memory usage:", cutorch.memory_allocated(0))
                     self.memory_usage.append(cutorch.memory_allocated(0))
-                    self.iters.append(cnt)
+                    self.iters.append(i)
                     val_loss, val_accuracy = self.validation(val_X, val_y)
                     self.val_losses.append(val_loss)
                     self.val_accuracies.append(val_accuracy)
                     self.losses.append(self.loss.item())
-                cnt += 1
+
                 X = data[0].cuda()
                 y = data[1].cuda()
                 indices = data[2].cuda()
-                if i > maxIt:
+                if currSamples > maxSample:
                     del X
                     del y
                     torch.cuda.empty_cache()
@@ -280,9 +281,9 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
     # parser.add_argument('--master-weights', action='store_true',
     #     help='Maintain FP32 master weights to accompany any FP16 model weights, not applicable for O1 opt level')
     
-    def fit(self, train_loader, test_loader, C=None, batch_size=128, epochs=15, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
+    def fit(self, train_loader, test_loader, C=None, epochs=100, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
                   momentum=0.9, epsilon=8, alpha=10, delta_init="random", seed=0, opt_level="O2", loss_scale=1.0, out_dir="WongNNCifar10",
-                  maxIt = None, adv=False, predictionWeights=None):
+                  maxSample = None, adv=False, predictionWeights=None):
       
         from utils import (upper_limit, lower_limit, std, clamp, get_loaders,
         attack_pgd, evaluate_pgd, evaluate_standard)
@@ -332,7 +333,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         criterion = nn.CrossEntropyLoss()
 
         if delta_init == 'previous':
-            delta = torch.zeros(batch_size, 3, 32, 32).cuda()
+            delta = torch.zeros(train_loader.batch_size, 3, 32, 32).cuda()
 
         lr_steps = epochs * len(train_loader)
         if lr_schedule == 'cyclic':
@@ -346,18 +347,19 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         # Training
         prev_robust_acc = 0.
         start_train_time = time.time()
-        # logger.info('Epoch \t Seconds \t LR \t \t Train Loss \t Train Acc')
+#         logger.info('Epoch \t Seconds \t LR \t \t Train Loss \t Train Acc')
         cur_iteration = 0
         for epoch in range(epochs):
+            print("Epoch %d"%(epoch))
             start_epoch_time = time.time()
             train_loss = 0
             train_acc = 0
             train_n = 0
             for i, data in enumerate(train_loader):
-                cur_iteration += 1
-                if maxIt and cur_iteration >= maxIt: break
+                cur_iteration += train_loader.batch_size
+                if maxSample and cur_iteration >= maxSample: break
                 X, y = data[0].cuda(), data[1].cuda()
-                if i % 10 == 1:
+                if i % 100 == 99:
 #                     print("Iteration: ", i)
 #                     print("memory usage:", cutorch.memory_allocated(0))
                     self.memory_usage.append(cutorch.memory_allocated(0))
@@ -369,7 +371,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     self.val_losses.append(val_loss)
                     self.val_accuracies.append(val_accuracy)
                     self.losses.append(self.loss.item())
-#                     print("val accuracy:", self.val_accuracies[-1])
+                    print("it %d val accuracy: %.4f" %(i, self.val_accuracies[-1]))
                 if i == 0:
                     first_batch = (X, y)
 

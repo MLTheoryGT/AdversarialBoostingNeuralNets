@@ -27,3 +27,8 @@ for each experiment and use a prefix)
 - add fake weak learner tests
 - changed dataset size to 50000 -- should probably add this as a parameter in the future
 - need to debug this further
+
+
+# Dec 15 2020
+- added functionality for maxSamples(need to test)
+- made plots x axis numSamples(need to test)
