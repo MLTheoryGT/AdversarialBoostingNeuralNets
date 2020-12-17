@@ -343,12 +343,12 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
             scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[lr_steps / 2, lr_steps * 3 / 4], gamma=0.1)
 
         print("adv:", adv)
-        print("maxIt:", maxIt)
         # Training
         prev_robust_acc = 0.
         start_train_time = time.time()
 #         logger.info('Epoch \t Seconds \t LR \t \t Train Loss \t Train Acc')
         cur_iteration = 0
+        done = False
         for epoch in range(epochs):
             print("Epoch %d"%(epoch))
             start_epoch_time = time.time()
@@ -357,7 +357,9 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
             train_n = 0
             for i, data in enumerate(train_loader):
                 cur_iteration += train_loader.batch_size
-                if maxSample and cur_iteration >= maxSample: break
+                if maxSample and cur_iteration >= maxSample:
+                    done = True
+                    break
                 X, y = data[0].cuda(), data[1].cuda()
                 if i % 100 == 99:
 #                     print("Iteration: ", i)
@@ -435,6 +437,9 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                 # best_state_dict = copy.deepcopy(model.state_dict())
             epoch_time = time.time()
             lr = scheduler.get_lr()[0]
+            
+            if done:
+                break
         torch.cuda.empty_cache()
         # logger.info('%d \t %.1f \t \t %.4f \t %.4f \t %.4f',
         # epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n)

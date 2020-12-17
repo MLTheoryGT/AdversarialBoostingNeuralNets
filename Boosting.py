@@ -14,8 +14,10 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
             maxSamples: either None or a list for each wl
     """
     if maxSamples is None:
-        maxSamples = [500 for i in range(len(numLearners))]
-    assert(len(numLearners) == len(maxSamples))
+        maxSamples = [500 for i in range(numLearners)]
+    else:
+        maxSamples = [maxSamples for i in range(numLearners)]
+    assert(numLearners == len(maxSamples))
     
     def dataset_with_indices(cls):
         """
@@ -62,7 +64,7 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
     val_accuracies = []
     train_accuracies = []
 
-    for maxSample in maxSamples:
+    for t, maxSample in enumerate(maxSamples):
         print("-"*100)
         print("Training weak learner {}".format(t))
         # Boosting matrix update
@@ -106,12 +108,13 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         
         # grab test accuracy of full ensemble
         ensemble = Ensemble(weakLearners, weakLearnerWeights, weakLearnerType=weakLearnerType)
-        new_val_accuracy = ensemble.calc_accuracy(dataset, train=False)
-        new_train_accuracy = ensemble.calc_accuracy(dataset, train=True)
-        val_accuracies.append(new_val_accuracy)
-        train_accuracies.append(new_train_accuracy)
-        print("After newest WL validation score is: ", new_val_accuracy)
-        print("After newest WL training score is: ", new_train_accuracy)
+        if t % 10 == 1:
+            new_val_accuracy = ensemble.calc_accuracy(dataset, train=False)
+            new_train_accuracy = ensemble.calc_accuracy(dataset, train=True)
+            val_accuracies.append(new_val_accuracy)
+            train_accuracies.append(new_train_accuracy)
+            print("After newest WL validation score is: ", new_val_accuracy)
+            print("After newest WL training score is: ", new_train_accuracy)
         
         
     return weakLearners, weakLearnerWeights, val_accuracies, train_accuracies_ensemble
@@ -233,7 +236,7 @@ class BoostingSampler(Sampler):
     def setC(self, C):
         self.C = C
 
-def runBoosting(numWL, maxIt, epochs, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10):
+def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10):
     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
                 ]))
@@ -251,7 +254,7 @@ def runBoosting(numWL, maxIt, epochs, dataset=datasets.CIFAR10, weakLearnerType=
 
     t0 = datetime.now()
 
-    wl, wlweights, val_accuracies, train_accuracies_ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv=False, maxIt=maxIt, predictionWeights=False, epochs=1, weakLearnerType=weakLearnerType)
+    wl, wlweights, val_accuracies, train_accuracies_ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv=False, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType)
 
     ensemble = Ensemble(wl, wlweights, weakLearnerType = weakLearnerType)
 
