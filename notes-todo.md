@@ -32,3 +32,9 @@ for each experiment and use a prefix)
 # Dec 15 2020
 - added functionality for maxSamples(need to test)
 - made plots x axis numSamples(need to test)
+
+# Dec 17 2020
+- update the overleaf to reflect current experiment results
+
+# Dec 18 2020
+- todo: add folder called cifar10_data
