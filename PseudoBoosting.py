@@ -170,9 +170,9 @@ def plot_fake_accuracies(wl, wlweights, train_y):
     wl_range = list(range(1, numWeakLearners + 1))
     wl_accuracies = []
     for i in range(numWeakLearners):
-        print("numWeakLearners:", numWeakLearners)
+#         print("numWeakLearners:", numWeakLearners)
         cur_prediction = predictions[i]
-        print("cur_prediction:", cur_prediction)
+#         print("cur_prediction:", cur_prediction)
         cur_accuracy = (cur_prediction == train_y).astype(int).sum()/len(cur_prediction)
         wl_accuracies.append(cur_accuracy)
     
@@ -181,5 +181,6 @@ def plot_fake_accuracies(wl, wlweights, train_y):
     plt.xlabel('Number of weak learners')
     plt.ylabel('Accuracy')
     plt.title('Accuracy vs. number of weak learners')
-    plt.show()
+#     plt.show()
+    plt.savefig(f'results/plots/pseudoboosting_wl_{numWeakLearners}')
     return predictions, last_prediction

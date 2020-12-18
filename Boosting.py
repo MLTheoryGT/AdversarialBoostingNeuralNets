@@ -61,8 +61,9 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
 
     f = np.zeros((m, k))
     
-    val_accuracies = []
     train_accuracies = []
+    val_accuracies_ensemble = []
+    train_accuracies_ensemble = []
 
     for t, maxSample in enumerate(maxSamples):
         print("-"*100)
@@ -86,7 +87,9 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         
         # Get training acuracy of WL
         _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
-        print("Training accuracy of weak learner: ", (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions))
+        wl_train_acc = (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions)
+        train_accuracies.append(wl_train_acc)
+        print("Training accuracy of weak learner: ", wl_train_acc)
         
         # Get alpha for this weak learners
         a = -C_t[np.arange(m), predictions].sum()
@@ -111,13 +114,13 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         if t % 10 == 1:
             new_val_accuracy = ensemble.calc_accuracy(dataset, train=False)
             new_train_accuracy = ensemble.calc_accuracy(dataset, train=True)
-            val_accuracies.append(new_val_accuracy)
-            train_accuracies.append(new_train_accuracy)
+            val_accuracies_ensemble.append(new_val_accuracy)
+            train_accuracies_ensemble.append(new_train_accuracy)
             print("After newest WL validation score is: ", new_val_accuracy)
             print("After newest WL training score is: ", new_train_accuracy)
         
         
-    return weakLearners, weakLearnerWeights, val_accuracies, train_accuracies_ensemble
+    return weakLearners, weakLearnerWeights, train_accuracies, val_accuracies_ensemble, train_accuracies_ensemble
 
 class Ensemble:
     def __init__(self, weakLearners, weakLearnerWeights, weakLearnerType=PreActResNet18):
@@ -254,11 +257,11 @@ def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=Won
 
     t0 = datetime.now()
 
-    wl, wlweights, val_accuracies, train_accuracies_ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv=False, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType)
+    wl, wlweights, train_accuracies, val_accuracies_ensemble, train_accuracies_ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv=False, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType)
 
     ensemble = Ensemble(wl, wlweights, weakLearnerType = weakLearnerType)
 
     predictions = ensemble.schapirePredict(val_X.to(torch.device('cuda:0')), 10)
     print("Finished With: ", (predictions == val_y.numpy()).astype(int).sum()/len(predictions))
     print("In ", (datetime.now()-t0).total_seconds(), " s")
-    return wl, wlweights, val_accuracies, train_accuracies_ensemble
+    return wl, wlweights, train_accuracies, val_accuracies_ensemble, train_accuracies_ensemble
