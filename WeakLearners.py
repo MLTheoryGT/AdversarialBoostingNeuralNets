@@ -361,6 +361,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     done = True
                     break
                 X, y = data[0].cuda(), data[1].cuda()
+                self.losses.append(self.loss.item())
                 if i % 100 == 99:
 #                     print("Iteration: ", i)
 #                     print("memory usage:", cutorch.memory_allocated(0))
@@ -372,7 +373,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     # print("memory usage:", cutorch.memory_allocated(0))
                     self.val_losses.append(val_loss)
                     self.val_accuracies.append(val_accuracy)
-                    self.losses.append(self.loss.item())
+                    
                     print("it %d val accuracy: %.4f" %(i, self.val_accuracies[-1]))
                 if i == 0:
                     first_batch = (X, y)

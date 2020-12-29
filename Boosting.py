@@ -111,7 +111,8 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         
         # grab test accuracy of full ensemble
         ensemble = Ensemble(weakLearners, weakLearnerWeights, weakLearnerType=weakLearnerType)
-        if t % 10 == 1:
+        divider = 1
+        if t % divider == 0:
             new_val_accuracy = ensemble.calc_accuracy(dataset, train=False)
             new_train_accuracy = ensemble.calc_accuracy(dataset, train=True)
             val_accuracies_ensemble.append(new_val_accuracy)

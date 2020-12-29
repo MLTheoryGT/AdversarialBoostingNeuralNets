@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+import numpy as np
 cuda = torch.device('cuda:0')
 
 
@@ -149,21 +150,21 @@ class BaseNeuralNet():
             self.val_memory = []
 
     def plot_train(self, batchSize):
-        plt.plot(np.arange(0, len(self.losses*batchSize), batchSize), self.losses)
+        plt.plot(np.arange(0, len(self.losses)*batchSize, batchSize), self.losses)
         plt.xlabel('Iterations')
         plt.ylabel('Training loss')
         plt.title('Training loss vs iterations')
         plt.show()
   
-    def plot_val(self, batchSize):
-        plt.plot(np.arange(0, len(self.val_losses*batchSize), batchSize), self.val_losses)
+    def plot_val(self, batchSize, firstBatch = 99, valFreq = 100):
+        plt.plot(np.arange(firstBatch, len(self.val_losses)*batchSize*valFreq, batchSize*valFreq), self.val_losses)
         plt.xlabel('Iterations')
         plt.ylabel('Validation loss')
         plt.title('Validation loss vs iterations')
         plt.show()
     
-    def plot_val_accuracies(self, batchSize):
-        plt.plot(np.arange(0, len(self.val_accuracies*batchSize), batchSize), self.val_accuracies)
+    def plot_val_accuracies(self, batchSize, firstBatch = 99, valFreq = 100):
+        plt.plot(np.arange(firstBatch, len(self.val_accuracies)*batchSize*valFreq, batchSize*valFreq), self.val_accuracies)
         plt.xlabel('Iterations')
         plt.ylabel('Validation accuracy')
         plt.title('Validation accuracy vs iterations')
