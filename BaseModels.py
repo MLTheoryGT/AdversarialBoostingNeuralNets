@@ -128,15 +128,11 @@ class BaseNeuralNet():
     def __init__(self, netOfChoice):
         self.model = netOfChoice().to(cuda)
         self.losses = []
-        self.iters = []
-        self.val_losses = []
-        self.val_accuracies = []
-        self.adversarial_losses = []
-        self.adversarial_accuracies = []
-        self.fgsm_losses = []
-        self.fgsm_accuracies = []
-        self.pgd_losses = []
-        self.pgd_accuracies = []
+        self.val_samples_checkpoints = [] # this is the x value for plotting
+        self.train_samples_checkpoints = []
+
+        self.losses = {}
+        self.accuracies = {}
         self.attack_epsilons=[0., 0.01, 0.05, 0.1, 0.2, 0.3, 0.4]
         for i in range(len(self.attack_epsilons)):
             self.adversarial_losses.append([])
@@ -151,42 +147,41 @@ class BaseNeuralNet():
 
     def plot_train(self, batchSize):
         plt.plot(np.arange(0, len(self.losses)*batchSize, batchSize), self.losses)
-        plt.xlabel('Iterations')
+        self.
+        plt.xlabel('Total samples')
         plt.ylabel('Training loss')
-        plt.title('Training loss vs iterations')
+        plt.title('Training loss')
         plt.show()
   
     def plot_val(self, batchSize, firstBatch = 99, valFreq = 100):
-        plt.plot(np.arange(firstBatch, len(self.val_losses)*batchSize*valFreq, batchSize*valFreq), self.val_losses)
-        plt.xlabel('Iterations')
+        plt.plot(self.val_samples_checkpoints, self.val_losses)
+        plt.xlabel('Total samples')
         plt.ylabel('Validation loss')
-        plt.title('Validation loss vs iterations')
+        plt.title('Validation loss')
         plt.show()
     
     def plot_val_accuracies(self, batchSize, firstBatch = 99, valFreq = 100):
-        plt.plot(np.arange(firstBatch, len(self.val_accuracies)*batchSize*valFreq, batchSize*valFreq), self.val_accuracies)
-        plt.xlabel('Iterations')
+        plt.plot(self.val_samples_checkpoints, self.val_accuracies)
+        plt.xlabel('Total samples')
         plt.ylabel('Validation accuracy')
-        plt.title('Validation accuracy vs iterations')
+        plt.title('Validation accuracy')
         plt.show()
   
     def plot_adversarial_accuracies(self):
         # f, ax = plt.subplots(12)
         colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
-        for i in range(len(self.attack_epsilons)):
-            plt.plot(self.iters, self.adversarial_accuracies[i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_epsilons[i]))
-            # print("epsilon:", self.attack_epsilons[i])
-            # print("iters")
-            # print(self.iters)
-            # print("iters length:", len(self.iters))
-            # print("adversarial accuracies")
-            # print(self.adversarial_accuracies[i])
-            # print("accuracies length:", len(self.adversarial_accuracies[i]))
+        plt.subplots()
+        for attack in self.losses:
+            if attack != 'val':
+                attack_name = attack.__name__
+                    
+                for i in range(len(self.attack_epsilons)):
+                    plt.plot(self.val_samples_checkpoints, self.accuracies[attack][i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_epsilons[i]))
 
-        plt.legend()
-        plt.xlabel("Number of training iterations")
-        plt.ylabel("Accuracy")
-        plt.title("Adversarial accuracy over number of iterations")
+                plt.legend()
+                plt.xlabel("Number of training samples")
+                plt.ylabel("Accuracy")
+                plt.title(f"Adversarial accuracy ({attack_name})")
     
     def plot_memory_usage(self):
         f, ax = plt.subplots()
@@ -195,50 +190,60 @@ class BaseNeuralNet():
         plt.ylabel("Total memory usage")
         plt.title("Memory usage over number of iterations")
   
-    def validation(self, X, y, attack=attack_fgsm, alpha = 1e-2, attack_iters = 50, restarts = 10, y_pred=None):
+    def validation(self, X, y, attacks=[], alpha = 1e-2, attack_iters = 50, restarts = 10, y_pred=None):
 #         print("in validation")
-        total_loss = 0
-        cnt = 0
-        val_accuracy = None
-
+        
+        losses = {} # (non_adv, adv)
+        accuracies = {}
 
         # accuracy on clean examples
         if y_pred is None:
             y_pred = self.model(X)
         val_accuracy = (y_pred.max(1)[1] == y).sum().item() / X.shape[0]
-        loss = F.cross_entropy(y_pred, y).item()
-        cnt += 1
-        total_loss += loss
+        val_loss = F.cross_entropy(y_pred, y).item()
+        
+        losses['val'] = val_loss
+        accuracies['val'] = val_accuracy
         
         # accuracy on adversarial examples
         epsilons = self.attack_epsilons
 
         # TODO: modify the below block when I want to also test PGD
-        adversarial_losses = None
-        adversarial_accuracies = None
-        if attack == attack_fgsm:
-            adversarial_losses = self.fgsm_losses
-            adversarial_accuracies = self.fgsm_accuracies
-        else:
-            adversarial_losses = self.pgd_losses
-            adversarial_accuracies = self.pgd_accuracies
+        for attack in attacks:
+            losses[attack] = []
+            accuracies[attack] = []
+
+            for i in range(len(epsilons)):
+                print("epsilon:", epsilons[i])
+                epsilon = epsilons[i]
+                delta = None
+                if attack == attack_fgsm:
+                    delta = attack_fgsm(X, y, epsilon, self.model)
+                else:
+                    # assuming attack == attack_pgd
+                    delta = attack_pgd(X, y, epsilon, self.model, alpha, attack_iters, restarts)
+                X_adv = X + delta
+                y_pred = self.model(X_adv).detach()
+                accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
+                loss = F.cross_entropy(y_pred, y)
+                losses[attack].append(loss)
+                accuracies[attack].append(accuracy)
     
-        for i in range(len(epsilons)):
-            epsilon = epsilons[i]
-            delta = None
-            if attack == attack_fgsm:
-                delta = attack_fgsm(X, y, epsilon, self.model)
-            else:
-                # assuming attack == attack_pgd
-                delta = attack_pgd(X, y, epsilon, self.model, alpha, attack_iters, restarts)
-            X_adv = X + delta
-            y_pred = self.model(X_adv).detach()
-            accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
-            loss = F.cross_entropy(y_pred, y)
-            self.adversarial_losses[i].append(loss)
-            self.adversarial_accuracies[i].append(accuracy)
+        return losses, accuracies
     
-        return total_loss, val_accuracy
+    def record_validation(self, val_X, val_y, currSamples, attack=None):
+        self.memory_usage.append(cutorch.memory_allocated(0))
+        self.currSamples.append(iter_num)
+        losses, accuracies = self.validation(val_X, val_y)
+        self.losses[val].append(losses['val'])
+        self.accuracies[val].append(accuracies['val'])
+        for attack in losses:
+            if attack != 'val':
+                self.losses[attack].append([]) # adding to a new currSamples
+                for i in range(len(self.epsilons)):
+                    self.losses[attack][-1].append(losses[attack][i])
+                    self.accuracies[attack][-1].append(accuracies[attack][i])
+        print("Num samples: %d,  val accuracy: %.4f" %(currSamples, self.accuracies['val'][-1]))
 
     def predict(self, X):
         return self.model(X)

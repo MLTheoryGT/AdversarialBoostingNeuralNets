@@ -41,3 +41,13 @@ for each experiment and use a prefix)
 
 # Dec 24 2020
 - Run boosting on the original Wong neural net (and try to compare how it performs with respect to the original nn)
+
+# Jan 7 2021
+- What we did
+    * Discovered that we were calling adversarial attacks all the time
+        * Cleaned up / generalized some validation functions
+    * Made batchUpdates return loss
+- TODO
+    * Update CIFAR10 code to reflect validation
+    * Test the validation
+    * Run experiments with adv = True (phase 2)
