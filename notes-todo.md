@@ -38,3 +38,6 @@ for each experiment and use a prefix)
 
 # Dec 18 2020
 - todo: add folder called cifar10_data
+
+# Dec 24 2020
+- Run boosting on the original Wong neural net (and try to compare how it performs with respect to the original nn)
