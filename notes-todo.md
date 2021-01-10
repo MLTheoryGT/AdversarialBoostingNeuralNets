@@ -51,3 +51,9 @@ for each experiment and use a prefix)
     * Update CIFAR10 code to reflect validation
     * Test the validation
     * Run experiments with adv = True (phase 2)
+    
+# Jan 9 2021
+- TODO
+    * get mnist to run
+        * Expected to be much faster (since validation is quicker)
+        * Give the code another readthrough (see how we can make it more versatile)

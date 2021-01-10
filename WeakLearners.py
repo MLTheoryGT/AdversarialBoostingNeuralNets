@@ -76,7 +76,7 @@ class BoostedWongNeuralNet(BaseNeuralNet):
                     self.losses.append(loss.item())
                     del X
                     del y
-                self.train_samples_checkpoint.append(currSamples)
+                self.train_samples_checkpoints.append(currSamples)
                 
         # print("Escaped epoch")
         print("WL has validation accuracy", self.val_accuracies[-1])
@@ -84,7 +84,7 @@ class BoostedWongNeuralNet(BaseNeuralNet):
 
         torch.cuda.empty_cache()
     
-    def batchUpdate(self, X, y, epochs = 1, epsilon = 0.3, alpha = 0.375):
+    def batchUpdate(self, X, y, epsilon = 0.3, alpha = 0.375):
         self.model.train()
         N = X.size()[0]
 
@@ -112,7 +112,7 @@ class BoostedWongNeuralNet(BaseNeuralNet):
         optimizer.step()
         return loss
 
-    def batchUpdate_phase3(self, X, y, C, epochs = 1, epsilon = 0.3, alpha = 0.375):
+    def batchUpdate_phase3(self, X, y, C, epsilon = 0.3, alpha = 0.375):
         print("starting batchUpdate")
         def cross_entropy(pred, soft_targets):
             logsoftmax = nn.LogSoftmax()
@@ -257,17 +257,14 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         prev_robust_acc = 0.
         start_train_time = time.time()
 #         logger.info('Epoch \t Seconds \t LR \t \t Train Loss \t Train Acc')
-        cur_iteration = 0
+        currSamples = 0
         done = False
         for epoch in range(epochs):
             print("Epoch %d"%(epoch))
             start_epoch_time = time.time()
-            train_loss = 0
-            train_acc = 0
-            train_n = 0
             for i, data in enumerate(train_loader):
-                cur_iteration += train_loader.batch_size
-                if maxSample and cur_iteration >= maxSample:
+                currSamples += train_loader.batch_size
+                if maxSample and currSamples >= maxSample:
                     done = True
                     break
                 X, y = data[0].cuda(), data[1].cuda()
@@ -277,49 +274,20 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     
                 if i == 0:
                     first_batch = (X, y)
-
-                output = None
-
-                # print(X.shape)
-
+                
                 if adv:
-                    if delta_init != 'previous':
-                        delta = torch.zeros_like(X).cuda()
-
-                    if delta_init == 'random':
-                        for j in range(len(epsilon)):
-                            delta[:, j, :, :].uniform_(-epsilon[j][0][0].item(), epsilon[j][0][0].item())
-                        delta.data = clamp(delta, lower_limit - X, upper_limit - X)
-
-                    delta.requires_grad = True
-                    with torch.cuda.amp.autocast():
-                        output = model(X + delta[:X.size(0)])
-                        loss = F.cross_entropy(output, y)
-#                     with amp.scale_loss(loss, opt) as scaled_loss:
-#                         scaled_loss.backward()
-                    scaler.scale(loss).backward()
-
-                    grad = delta.grad.detach()
-                    delta.data = clamp(delta + alpha * torch.sign(grad), -epsilon, epsilon)
-                    delta.data[:X.size(0)] = clamp(delta[:X.size(0)], lower_limit - X, upper_limit - X)
-                    delta = delta.detach()
-                    # print("memory usage:", cutorch.memory_allocated(0))
-                    output = model(X + delta[:X.size(0)])
+                    loss = self.batchUpdate(X, y, epsilon, delta)
+                    self.losses.append(loss.item())
                 else:
-                    output = model(X)
-                # print("memory usage:", cutorch.memory_allocated(0))
-                loss = criterion(output, y)
-                self.loss = loss
+                    loss = self.batchUpdateNonAdv(X, y)
+                    self.losses.append(loss.item())
+                
+                self.train_samples_checkpoints.append(currSamples)
+
                 opt.zero_grad()
-#                 with torch.cuda.amp.scale_loss(loss, opt) as scaled_loss:
-#                     scaled_loss.backward()
                 scaler.scale(loss).backward()
-#                 opt.step()
                 scaler.step(opt)
                 scaler.update()
-                train_loss += loss.item() * y.size(0)
-                train_acc += (output.max(1)[1] == y).sum().item()
-                train_n += y.size(0)
                 scheduler.step()
                 del X
                 del y
@@ -342,28 +310,40 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
             if done:
                 break
         torch.cuda.empty_cache()
-        # logger.info('%d \t %.1f \t \t %.4f \t %.4f \t %.4f',
-        # epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n)
         train_time = time.time()
-        # if not early_stop:
-            # best_state_dict = model.state_dict()
-        # torch.save(best_state_dict, os.path.join(out_dir, 'model.pth'))
-        # logger.info('Total train time: %.4f minutes', (train_time - start_train_time)/60)
+        
+    def batchUpdate(self, X, y, epsilon, delta):
+        from utils import (upper_limit, lower_limit, std, clamp, get_loaders,
+        attack_pgd, evaluate_pgd, evaluate_standard) # delete whichever ones are unnecessary
+        if delta_init != 'previous':
+            delta = torch.zeros_like(X).cuda()
 
+        if delta_init == 'random':
+            for j in range(len(epsilon)):
+                delta[:, j, :, :].uniform_(-epsilon[j][0][0].item(), epsilon[j][0][0].item())
+            delta.data = clamp(delta, lower_limit - X, upper_limit - X)
 
-        # # Evaluation
-        # model_test = PreActResNet18().cuda()
-        # model_test.load_state_dict(best_state_dict)
-        # model_test.float()
-        # model_test.eval()
+        delta.requires_grad = True
+        with torch.cuda.amp.autocast():
+            output = model(X + delta[:X.size(0)])
+            loss = F.cross_entropy(output, y)
+        scaler.scale(loss).backward()
 
-
-        # pgd_loss, pgd_acc = evaluate_pgd(test_loader, model_test, 50, 10)
-        # test_loss, test_acc = evaluate_standard(test_loader, model_test)
-
-
-        # logger.info('Test Loss \t Test Acc \t PGD Loss \t PGD Acc')
-        # logger.info('%.4f \t \t %.4f \t %.4f \t %.4f', test_loss, test_acc, pgd_loss, pgd_acc)
+        grad = delta.grad.detach()
+        delta.data = clamp(delta + alpha * torch.sign(grad), -epsilon, epsilon)
+        delta.data[:X.size(0)] = clamp(delta[:X.size(0)], lower_limit - X, upper_limit - X)
+        delta = delta.detach()
+        output = model(X + delta[:X.size(0)])
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(output, y)
+        return loss
+        
+    def batchUpdateNonAdv(self, X, y, indices, C, epsilon = 0.3, alpha = 0.375, predictionWeights=False):
+        output = model(X)
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(output, y)
+        return loss
+        
     
     def batchUpdate(X, y, delta):
         grad = delta.grad.detach()

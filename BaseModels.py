@@ -131,23 +131,16 @@ class BaseNeuralNet():
         self.val_samples_checkpoints = [] # this is the x value for plotting
         self.train_samples_checkpoints = []
 
-        self.losses = {}
+        self.losses = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
         self.accuracies = {}
         self.attack_epsilons=[0., 0.01, 0.05, 0.1, 0.2, 0.3, 0.4]
         for i in range(len(self.attack_epsilons)):
-            self.adversarial_losses.append([])
-            self.adversarial_accuracies.append([])
-            self.fgsm_losses.append([])
-            self.fgsm_accuracies.append([])
-            self.pgd_losses.append([])
-            self.pgd_accuracies.append([])
             self.memory_usage = []
             self.train_memory = []
             self.val_memory = []
 
     def plot_train(self, batchSize):
-        plt.plot(np.arange(0, len(self.losses)*batchSize, batchSize), self.losses)
-        self.
+        plt.plot(self.train_samples_checkpoints, self.losses)
         plt.xlabel('Total samples')
         plt.ylabel('Training loss')
         plt.title('Training loss')
@@ -171,12 +164,11 @@ class BaseNeuralNet():
         # f, ax = plt.subplots(12)
         colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
         plt.subplots()
-        for attack in self.losses:
-            if attack != 'val':
-                attack_name = attack.__name__
+        for attack_name in self.losses:
+            if attack not in ['val', 'train']:
                     
                 for i in range(len(self.attack_epsilons)):
-                    plt.plot(self.val_samples_checkpoints, self.accuracies[attack][i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_epsilons[i]))
+                    plt.plot(self.val_samples_checkpoints, self.accuracies[attack_name][i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_epsilons[i]))
 
                 plt.legend()
                 plt.xlabel("Number of training samples")
@@ -239,10 +231,10 @@ class BaseNeuralNet():
         self.accuracies[val].append(accuracies['val'])
         for attack in losses:
             if attack != 'val':
-                self.losses[attack].append([]) # adding to a new currSamples
+                self.losses[attack.__name__].append([]) # adding to a new currSamples
                 for i in range(len(self.epsilons)):
-                    self.losses[attack][-1].append(losses[attack][i])
-                    self.accuracies[attack][-1].append(accuracies[attack][i])
+                    self.losses[attack.__name__][-1].append(losses[attack.__name__][i])
+                    self.accuracies[attack.__name__][-1].append(accuracies[attack.__name__][i])
         print("Num samples: %d,  val accuracy: %.4f" %(currSamples, self.accuracies['val'][-1]))
 
     def predict(self, X):
