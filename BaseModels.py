@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 cuda = torch.device('cuda:0')
+import torch.cuda as cutorch
 
 
 class Flatten(nn.Module):
@@ -131,7 +132,7 @@ class BaseNeuralNet():
         self.train_samples_checkpoints = []
 
         self.losses = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
-        self.accuracies = {}
+        self.accuracies = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
         self.attack_epsilons=[0., 0.01, 0.05, 0.1, 0.2, 0.3, 0.4]
         for i in range(len(self.attack_epsilons)):
             self.memory_usage = []
@@ -224,12 +225,12 @@ class BaseNeuralNet():
     
     def record_validation(self, val_X, val_y, currSamples, attack=None):
         self.memory_usage.append(cutorch.memory_allocated(0))
-        self.currSamples.append(iter_num)
+        self.val_samples_checkpoints.append(currSamples)
         losses, accuracies = self.validation(val_X, val_y)
-        self.losses[val].append(losses['val'])
-        self.accuracies[val].append(accuracies['val'])
+        self.losses['val'].append(losses['val'])
+        self.accuracies['val'].append(accuracies['val'])
         for attack in losses:
-            if attack != 'val':
+            if type(attack) != str:
                 self.losses[attack.__name__].append([]) # adding to a new currSamples
                 for i in range(len(self.epsilons)):
                     self.losses[attack.__name__][-1].append(losses[attack.__name__][i])

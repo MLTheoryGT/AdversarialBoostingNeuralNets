@@ -64,8 +64,8 @@ class BoostedWongNeuralNet(BaseNeuralNet):
                 if currSamples > maxSample:
                     del X
                     del y
+                    self.record_validation(val_X, val_y, currSamples)
                     torch.cuda.empty_cache()
-                    self.record_validation(val_X, val_y)
                     return
                 if adv:
                     loss = self.batchUpdate(X, y, C, alpha = alpha)
@@ -269,7 +269,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     break
                 X, y = data[0].cuda(), data[1].cuda()
                 if i % 100 == 99:
-                    self.record_validation(val_X, val_y)
+                    self.record_validation(val_X, val_y, currSamples)
                     
                 if i == 0:
                     first_batch = (X, y)
