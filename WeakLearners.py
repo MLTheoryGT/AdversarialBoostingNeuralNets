@@ -69,18 +69,18 @@ class BoostedWongNeuralNet(BaseNeuralNet):
                     return
                 if adv:
                     loss = self.batchUpdate(X, y, C, alpha = alpha)
-                    self.losses.append(loss.item())
+                    self.losses['train'].append(loss.item())
                 else:
                     # print("MB(%d), "%(i), end="")
                     loss = self.batchUpdateNonAdv(X, y, indices, C, alpha=alpha, predictionWeights=predictionWeights)
-                    self.losses.append(loss.item())
+                    self.losses['train'].append(loss.item())
                     del X
                     del y
                 self.train_samples_checkpoints.append(currSamples)
                 
         # print("Escaped epoch")
-        print("WL has validation accuracy", self.val_accuracies[-1])
-        print("WL has loss", self.losses[-1])
+        print("WL has validation accuracy", self.accuracies['val'][-1])
+        print("WL has loss", self.losses['train'][-1])
 
         torch.cuda.empty_cache()
     
@@ -268,7 +268,6 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     done = True
                     break
                 X, y = data[0].cuda(), data[1].cuda()
-                self.losses.append(self.loss.item())
                 if i % 100 == 99:
                     self.record_validation(val_X, val_y)
                     
@@ -277,10 +276,10 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                 
                 if adv:
                     loss = self.batchUpdate(X, y, epsilon, delta)
-                    self.losses.append(loss.item())
+                    self.losses['train'].append(loss.item())
                 else:
                     loss = self.batchUpdateNonAdv(X, y)
-                    self.losses.append(loss.item())
+                    self.losses['train'].append(loss.item())
                 
                 self.train_samples_checkpoints.append(currSamples)
 

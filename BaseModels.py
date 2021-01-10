@@ -127,7 +127,6 @@ class BaseNeuralNet():
     
     def __init__(self, netOfChoice):
         self.model = netOfChoice().to(cuda)
-        self.losses = []
         self.val_samples_checkpoints = [] # this is the x value for plotting
         self.train_samples_checkpoints = []
 
@@ -140,7 +139,7 @@ class BaseNeuralNet():
             self.val_memory = []
 
     def plot_train(self, batchSize):
-        plt.plot(self.train_samples_checkpoints, self.losses)
+        plt.plot(self.train_samples_checkpoints, self.losses['train'])
         plt.xlabel('Total samples')
         plt.ylabel('Training loss')
         plt.title('Training loss')
