@@ -57,3 +57,11 @@ for each experiment and use a prefix)
     * get mnist to run
         * Expected to be much faster (since validation is quicker)
         * Give the code another readthrough (see how we can make it more versatile)
+
+# Jan 10 2021
+- What we did
+    * created a LoggerMetric to keep track of accuracies / losses and for plotting functions for neural nets / ensembles
+    * Made the boosting function return an Ensemble (which inherits from LoggerMetric) rather than returning lists of accuracies
+- TODO
+    * Test the scripts with adversarially robust weak learner
+    * Figure out how to adversarially attack an ensemble

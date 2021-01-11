@@ -27,12 +27,12 @@ class Net(nn.Module):
         return x
     
 
-class BoostedWongNeuralNet(BaseNeuralNet):
+class WongNeuralNetMNIST(BaseNeuralNet):
 
     def __init__(self):
         super().__init__(Net)
 
-    def fit(self, train_loader, test_loader, C, alpha = 0.375, epochs = 1, lr_max = 5e-3, adv=True, maxSample=None, predictionWeights=False):
+    def fit(self, train_loader, test_loader, C, alpha = 0.375, epochs = 1, lr_max = 5e-3, adv_train=True, val_attacks = [], maxSample=None, predictionWeights=False):
         val_X = None
         val_y = None
         for data in test_loader:
@@ -45,7 +45,7 @@ class BoostedWongNeuralNet(BaseNeuralNet):
         lr_schedule = lambda t: np.interp([t], [0, epochs * 2//5, epochs], [0, lr_max, 0])[0]
         currSamples = 0
         
-        print(f"adv: {adv}")
+        print(f"adv_train: {adv_train}")
 
         # test_set, val_set = torch.utils.data.random_split(test_loader.dataset, [9000, 1000])
         for epoch in range(epochs):
@@ -56,7 +56,7 @@ class BoostedWongNeuralNet(BaseNeuralNet):
                 self.optimizer.param_groups[0].update(lr=lr)
                 
                 if i % 10 == 1:
-                    self.record_validation(val_X, val_y, currSamples)
+                    self.record_validation(val_X, val_y, currSamples, val_attacks=val_attacks)
 
                 X = data[0].cuda()
                 y = data[1].cuda()
@@ -64,10 +64,10 @@ class BoostedWongNeuralNet(BaseNeuralNet):
                 if currSamples > maxSample:
                     del X
                     del y
-                    self.record_validation(val_X, val_y, currSamples)
+                    self.record_validation(val_X, val_y, currSamples, val_attacks=val_attacks)
                     torch.cuda.empty_cache()
                     return
-                if adv:
+                if adv_train:
                     loss = self.batchUpdate(X, y, C, alpha = alpha)
                     self.losses['train'].append(loss.item())
                 else:
@@ -76,7 +76,7 @@ class BoostedWongNeuralNet(BaseNeuralNet):
                     self.losses['train'].append(loss.item())
                     del X
                     del y
-                self.train_samples_checkpoints.append(currSamples)
+                self.train_checkpoints.append(currSamples)
                 
         # print("Escaped epoch")
         print("WL has validation accuracy", self.accuracies['val'][-1])
@@ -85,6 +85,7 @@ class BoostedWongNeuralNet(BaseNeuralNet):
         torch.cuda.empty_cache()
     
     def batchUpdate(self, X, y, epsilon = 0.3, alpha = 0.375):
+        print("doing adversarial batchUpdate")
         self.model.train()
         N = X.size()[0]
 
@@ -206,7 +207,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
     
     def fit(self, train_loader, test_loader, C=None, epochs=100, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
                   momentum=0.9, epsilon=8, alpha=10, delta_init="random", seed=0, opt_level="O2", loss_scale=1.0, out_dir="WongNNCifar10",
-                  maxSample = None, adv=False, predictionWeights=None):
+                  maxSample = None, adv_train=False, val_attacks = [], predictionWeights=None):
       
         from utils import (upper_limit, lower_limit, std, clamp, get_loaders,
         attack_pgd, evaluate_pgd, evaluate_standard)
@@ -252,7 +253,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         elif lr_schedule == 'multistep':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[lr_steps / 2, lr_steps * 3 / 4], gamma=0.1)
 
-        print("adv:", adv)
+        print("adv_train:", adv_train)
         # Training
         prev_robust_acc = 0.
         start_train_time = time.time()
@@ -269,19 +270,19 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     break
                 X, y = data[0].cuda(), data[1].cuda()
                 if i % 100 == 99:
-                    self.record_validation(val_X, val_y, currSamples)
+                    self.record_validation(val_X, val_y, currSamples, val_attacks=val_attacks)
                     
                 if i == 0:
                     first_batch = (X, y)
                 
-                if adv:
+                if adv_train:
                     loss = self.batchUpdate(X, y, epsilon, delta)
                     self.losses['train'].append(loss.item())
                 else:
                     loss = self.batchUpdateNonAdv(X, y)
                     self.losses['train'].append(loss.item())
                 
-                self.train_samples_checkpoints.append(currSamples)
+                self.train_checkpoints.append(currSamples)
 
                 opt.zero_grad()
                 scaler.scale(loss).backward()

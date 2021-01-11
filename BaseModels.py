@@ -123,39 +123,39 @@ class PreActResNet(nn.Module):
 def PreActResNet18():
     return PreActResNet(PreActBlock, [2,2,2,2])
 
-
-class BaseNeuralNet():
+class MetricPlotter():
     
-    def __init__(self, netOfChoice):
-        self.model = netOfChoice().to(cuda)
-        self.val_samples_checkpoints = [] # this is the x value for plotting
-        self.train_samples_checkpoints = []
+    def __init__(self, xlabel):
+        self.val_checkpoints = [] # this is the x value for plotting
+        self.train_checkpoints = []
+        self.xlabel = xlabel
 
         self.losses = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
         self.accuracies = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
         self.attack_epsilons=[0., 0.01, 0.05, 0.1, 0.2, 0.3, 0.4]
+        
         for i in range(len(self.attack_epsilons)):
             self.memory_usage = []
             self.train_memory = []
             self.val_memory = []
 
-    def plot_train(self, batchSize):
-        plt.plot(self.train_samples_checkpoints, self.losses['train'])
-        plt.xlabel('Total samples')
+    def plot_train(self):
+        plt.plot(self.train_checkpoints, self.losses['train'])
+        plt.xlabel(self.xlabel)
         plt.ylabel('Training loss')
         plt.title('Training loss')
         plt.show()
   
-    def plot_val(self, batchSize, firstBatch = 99, valFreq = 100):
-        plt.plot(self.val_samples_checkpoints, self.val_losses)
-        plt.xlabel('Total samples')
+    def plot_val(self):
+        plt.plot(self.val_checkpoints, self.val_losses)
+        plt.xlabel(self.xlabel)
         plt.ylabel('Validation loss')
         plt.title('Validation loss')
         plt.show()
     
-    def plot_val_accuracies(self, batchSize, firstBatch = 99, valFreq = 100):
-        plt.plot(self.val_samples_checkpoints, self.val_accuracies)
-        plt.xlabel('Total samples')
+    def plot_val_accuracies(self):
+        plt.plot(self.val_checkpoints, self.val_accuracies)
+        plt.xlabel(self.xlabel)
         plt.ylabel('Validation accuracy')
         plt.title('Validation accuracy')
         plt.show()
@@ -168,21 +168,36 @@ class BaseNeuralNet():
             if attack not in ['val', 'train']:
                     
                 for i in range(len(self.attack_epsilons)):
-                    plt.plot(self.val_samples_checkpoints, self.accuracies[attack_name][i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_epsilons[i]))
+                    plt.plot(self.val_checkpoints, self.accuracies[attack_name][i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_epsilons[i]))
 
                 plt.legend()
-                plt.xlabel("Number of training samples")
+                plt.xlabel(self.xlabel)
                 plt.ylabel("Accuracy")
                 plt.title(f"Adversarial accuracy ({attack_name})")
+    
+    def plot_wl_train_acc(self):
+        plt.plot(self.train_checkpoints, self.accuracies['train'])
+        plt.xlabel(self.xlabel)
+        plt.ylabel('Weak learner train accuracy')
+        plt.title('Weak learner train accuracy')
+        plt.show()
     
     def plot_memory_usage(self):
         f, ax = plt.subplots()
         plt.plot(self.iters, self.memory_usage)
-        plt.xlabel("Number of training iterations")
+        plt.xlabel(self.xlabel)
         plt.ylabel("Total memory usage")
         plt.title("Memory usage over number of iterations")
+    
+
+class BaseNeuralNet(MetricPlotter):
+    
+    def __init__(self, netOfChoice):
+        super().__init__('Total samples')
+        self.model = netOfChoice().to(cuda)
+
   
-    def validation(self, X, y, attacks=[], alpha = 1e-2, attack_iters = 50, restarts = 10, y_pred=None):
+    def validation(self, X, y, val_attacks=[], alpha = 1e-2, attack_iters = 50, restarts = 10, y_pred=None):
 #         print("in validation")
         
         losses = {} # (non_adv, adv)
@@ -201,7 +216,8 @@ class BaseNeuralNet():
         epsilons = self.attack_epsilons
 
         # TODO: modify the below block when I want to also test PGD
-        for attack in attacks:
+        for attack in val_attacks:
+            print("about to attack")
             losses[attack] = []
             accuracies[attack] = []
 
@@ -223,10 +239,10 @@ class BaseNeuralNet():
     
         return losses, accuracies
     
-    def record_validation(self, val_X, val_y, currSamples, attack=None):
+    def record_validation(self, val_X, val_y, currSamples, val_attacks=[]):
         self.memory_usage.append(cutorch.memory_allocated(0))
-        self.val_samples_checkpoints.append(currSamples)
-        losses, accuracies = self.validation(val_X, val_y)
+        self.val_checkpoints.append(currSamples)
+        losses, accuracies = self.validation(val_X, val_y, val_attacks = val_attacks)
         self.losses['val'].append(losses['val'])
         self.accuracies['val'].append(accuracies['val'])
         for attack in losses:

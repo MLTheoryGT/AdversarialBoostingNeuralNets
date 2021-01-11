@@ -5,10 +5,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-from WeakLearners import WongNeuralNetCIFAR10, BoostedWongNeuralNet, Net
-from pytorch_memlab import LineProfiler    
+from WeakLearners import WongNeuralNetCIFAR10, Net
+from pytorch_memlab import LineProfiler 
+from BaseModels import MetricPlotter
 
-def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10):
+def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10):
     """
         Args:
             maxSamples: either None or a list for each wl
@@ -39,10 +40,8 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
     train_ds_index.targets = torch.tensor(np.array(train_ds_index.targets))
     test_ds_index.targets = torch.tensor(np.array(test_ds_index.targets))
 
-
     m = len(train_ds_index)
     k = len(train_ds_index.classes)
-    # print("m, k: ", m, k)
 
     batch_size = 100
     test_loader = torch.utils.data.DataLoader(test_ds_index, batch_size=200, shuffle=False)
@@ -56,14 +55,9 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
             ])),
         batch_size=100, shuffle=False)
 
-    weakLearners = []
-    weakLearnerWeights = []
-
-    f = np.zeros((m, k))
+    f = np.zeros((m, k))    
     
-    train_accuracies = []
-    val_accuracies_ensemble = []
-    train_accuracies_ensemble = []
+    ensemble = Ensemble(weakLearnerType=weakLearnerType)
 
     for t, maxSample in enumerate(maxSamples):
         print("-"*100)
@@ -83,12 +77,12 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         
         # Fit WL on weighted subset of data
         h_i = weakLearner()
-        h_i.fit(train_loader, test_loader, C_t, adv=adv, maxSample=maxSample, predictionWeights=predictionWeights)
+        h_i.fit(train_loader, test_loader, C_t, adv_train=adv_train, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
         
         # Get training acuracy of WL
         _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
         wl_train_acc = (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions)
-        train_accuracies.append(wl_train_acc)
+        ensemble.accuracies['wl_train'].append(wl_train_acc)
         print("Training accuracy of weak learner: ", wl_train_acc)
         
         # Get alpha for this weak learners
@@ -103,35 +97,34 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         path_name = 'mnist' if dataset==datasets.MNIST else 'cifar10'
         model_path = f'./models/{path_name}_wl_{t}.pth'
         torch.save(h_i.model.state_dict(), model_path)
-        weakLearners.append(model_path)
         del h_i
         del predictions
         torch.cuda.empty_cache()
-        weakLearnerWeights.append(alpha)
+        ensemble.addWeakLearner(model_path, alpha)
         
-        # grab test accuracy of full ensemble
-        ensemble = Ensemble(weakLearners, weakLearnerWeights, weakLearnerType=weakLearnerType)
+        # grab accuracy of full ensemble
         divider = 1
         if t % divider == 0:
-            new_val_accuracy = ensemble.calc_accuracy(dataset, train=False)
-            new_train_accuracy = ensemble.calc_accuracy(dataset, train=True)
-            val_accuracies_ensemble.append(new_val_accuracy)
-            train_accuracies_ensemble.append(new_train_accuracy)
-            print("After newest WL validation score is: ", new_val_accuracy)
-            print("After newest WL training score is: ", new_train_accuracy)
+            ensemble.record_accuracies(dataset, t)
         
         
-    return weakLearners, weakLearnerWeights, train_accuracies, val_accuracies_ensemble, train_accuracies_ensemble
+    return ensemble
 
-class Ensemble:
-    def __init__(self, weakLearners, weakLearnerWeights, weakLearnerType=PreActResNet18):
+class Ensemble(MetricPlotter):
+    def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10):
         """
         """
+        super().__init__('Number of weak learners')
         self.weakLearners = weakLearners
         self.weakLearnerWeights = weakLearnerWeights
         self.weakLearnerType = weakLearnerType
+        self.accuracies['wl_train'] = []
+    
+    def addWeakLearner(self, weakLearner, weakLearnerWeight):
+        self.weakLearners.append(weakLearner)
+        self.weakLearnerWeights.append(weakLearnerWeight)
 
-    def getWLPredictionsString(self, X, k):
+    def getWLPredictionsString(self, X, k, argmax=True):
         T = len(self.weakLearners)
         wLPredictions = []
         for i in range(T):
@@ -139,12 +132,51 @@ class Ensemble:
             learner.model.load_state_dict(torch.load(self.weakLearners[i]))
             learner.model = learner.model.to(torch.device('cuda:0'))
             learner.model.eval()
-            prediction = learner.model(X).argmax(axis = 1)
+            if argmax:
+                prediction = learner.model(X).argmax(axis = 1)
+            else:
+                prediction = learner.model(X)
             wLPredictions.append(prediction)
         return wLPredictions
+    
+    def getWLPredictions(self, X, k):
+        T = len(self.weakLearners)
+        wLPredictions = torch.tensor((k, T))
+        for i in range(T):
+            if not isinstance(self.weakLearners[i], str):
+                learner = self.weakLearners[i]
+            else:
+                learner = self.weakLearnerType()
+                learner.model.load_state_dict(torch.load(self.weakLearners[i]))
+                learner.model = learner.model.to(torch.device('cuda:0'))
+                learner.model.eval()
+            prediction = learner.model(X)
+            wLPredictions[:,i] = prediction
+        return WLPredictions
 
 
     def schapirePredict(self, X, k):
+        wLPredictions = None
+
+        predictions = np.zeros(len(X))
+        T = len(self.weakLearners)
+        
+#         if isinstance(self.weakLearners[0], str):
+#             wLPredictions = self.getWLPredictionsString(X, k)
+#         else:
+#             wLPredictions = [self.weakLearners[i].predict(X).argmax(axis=1) for i in range(T)]
+        
+        wLPredictions = self.getWLPredictions(X, k)
+        
+        for i in range(len(X)):
+            F_Tx =[]
+            for l in range(k):
+                F_Tx.append(sum([self.weakLearnerWeights[t] * (1 if wLPredictions[t][i] == l else 0) for t in range(T)]))
+        
+            predictions[i] = np.argmax(np.array(F_Tx))
+        return predictions
+    
+    def schapireContinuousPredict(self, X, k):
         wLPredictions = None
 
         predictions = np.zeros(len(X))
@@ -154,15 +186,15 @@ class Ensemble:
             wLPredictions = self.getWLPredictionsString(X, k)
         else:
             wLPredictions = [self.weakLearners[i].predict(X).argmax(axis=1) for i in range(T)]
-
         
-        for i in range(len(X)):
-            F_Tx =[]
-            for l in range(k):
-                F_Tx.append(sum([self.weakLearnerWeights[t] * (1 if wLPredictions[t][i] == l else 0) for t in range(T)]))
-        
-            predictions[i] = np.argmax(np.array(F_Tx))
-        return predictions
+        nn_outputs = torch.tensor((k, T))
+        for i in range(T):
+            nn_outputs[:,i] = 
+    
+    
+    def calc_adv_accuracy(self):
+        # TODO
+        pass
     
     def calc_accuracy(self, dataset, num_batches = 15, train=True):
         totalIts = 0
@@ -183,6 +215,16 @@ class Ensemble:
             if totalIts > num_batches:
                 break
         return accuracy / totalIts
+    
+    def record_accuracies(self, dataset, wl_idx):
+        train_acc = self.calc_accuracy(dataset, train=True)
+        val_acc = self.calc_accuracy(dataset, train=False)
+        print("After newest WL, the ensemble's validation score is: ", train_acc)
+        print("After newest WL, the ensemble's training score is: ", val_acc)
+        self.accuracies['train'].append(train_acc)
+        self.accuracies['val'].append(val_acc)
+        self.train_checkpoints.append(wl_idx)
+        self.val_checkpoints.append(wl_idx)
 
 
 def pytorch_predict(model, test_loader, device):
@@ -240,7 +282,7 @@ class BoostingSampler(Sampler):
     def setC(self, C):
         self.C = C
 
-def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10):
+def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10, adv_train=False, val_attacks=[]):
     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
                 ]))
@@ -258,11 +300,8 @@ def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=Won
 
     t0 = datetime.now()
 
-    wl, wlweights, train_accuracies, val_accuracies_ensemble, train_accuracies_ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv=False, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType)
+    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv_train=adv_train, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType)
 
-    ensemble = Ensemble(wl, wlweights, weakLearnerType = weakLearnerType)
-
-    predictions = ensemble.schapirePredict(val_X.to(torch.device('cuda:0')), 10)
-    print("Finished With: ", (predictions == val_y.numpy()).astype(int).sum()/len(predictions))
-    print("In ", (datetime.now()-t0).total_seconds(), " s")
-    return wl, wlweights, train_accuracies, val_accuracies_ensemble, train_accuracies_ensemble
+    print("Finished in", (datetime.now()-t0).total_seconds(), " s")
+    
+    return ensemble
