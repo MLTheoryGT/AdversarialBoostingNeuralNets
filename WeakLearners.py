@@ -56,7 +56,7 @@ class WongNeuralNetMNIST(BaseNeuralNet):
                 self.optimizer.param_groups[0].update(lr=lr)
                 
                 if i % 10 == 1:
-                    self.record_validation(val_X, val_y, currSamples, val_attacks=val_attacks)
+                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, val_attacks=val_attacks)
 
                 X = data[0].cuda()
                 y = data[1].cuda()
@@ -64,7 +64,7 @@ class WongNeuralNetMNIST(BaseNeuralNet):
                 if currSamples > maxSample:
                     del X
                     del y
-                    self.record_validation(val_X, val_y, currSamples, val_attacks=val_attacks)
+                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, val_attacks=val_attacks)
                     torch.cuda.empty_cache()
                     return
                 if adv_train:
@@ -270,7 +270,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     break
                 X, y = data[0].cuda(), data[1].cuda()
                 if i % 100 == 99:
-                    self.record_validation(val_X, val_y, currSamples, val_attacks=val_attacks)
+                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y , val_attacks=val_attacks)
                     
                 if i == 0:
                     first_batch = (X, y)

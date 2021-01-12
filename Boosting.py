@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from WeakLearners import WongNeuralNetCIFAR10, Net
 from pytorch_memlab import LineProfiler 
-from BaseModels import MetricPlotter
+from BaseModels import MetricPlotter, Validator
 
 def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10):
     """
@@ -46,14 +46,19 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
     batch_size = 100
     test_loader = torch.utils.data.DataLoader(test_ds_index, batch_size=200, shuffle=False)
     for data in test_loader:
-        test_X = data[0]
-        test_y = data[1]
+        val_X = data[0].cuda()
+        val_y = data[1].cuda()
+        break
 
     train_loader_default = torch.utils.data.DataLoader(
         dataset('./data', train=True, download=True, transform=transforms.Compose([
             transforms.ToTensor(),
             ])),
         batch_size=100, shuffle=False)
+    for data in train_loader_default:
+        train_X = data[0].cuda()
+        train_y = data[1].cuda()
+        break
 
     f = np.zeros((m, k))    
     
@@ -105,20 +110,27 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         # grab accuracy of full ensemble
         divider = 1
         if t % divider == 0:
-            ensemble.record_accuracies(dataset, t)
-        
+            ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
         
     return ensemble
 
-class Ensemble(MetricPlotter):
+class Ensemble(MetricPlotter, Validator):
     def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10):
         """
         """
-        super().__init__('Number of weak learners')
+        MetricPlotter.__init__(self, 'Number of weak learners')
+        Validator.__init__(self)
         self.weakLearners = weakLearners
         self.weakLearnerWeights = weakLearnerWeights
         self.weakLearnerType = weakLearnerType
         self.accuracies['wl_train'] = []
+
+    def plot_wl_train_acc(self):
+        plt.plot(self.train_checkpoints, self.accuracies['wl_train'])
+        plt.xlabel(self.xlabel)
+        plt.ylabel('Weak learner train accuracy')
+        plt.title('Weak learner train accuracy')
+        plt.show()
     
     def addWeakLearner(self, weakLearner, weakLearnerWeight):
         self.weakLearners.append(weakLearner)
@@ -141,7 +153,7 @@ class Ensemble(MetricPlotter):
     
     def getWLPredictions(self, X, k):
         T = len(self.weakLearners)
-        wLPredictions = torch.tensor((k, T))
+        wLPredictions = torch.zeros((X.shape[0], k, T)).cuda()
         for i in range(T):
             if not isinstance(self.weakLearners[i], str):
                 learner = self.weakLearners[i]
@@ -151,9 +163,12 @@ class Ensemble(MetricPlotter):
                 learner.model = learner.model.to(torch.device('cuda:0'))
                 learner.model.eval()
             prediction = learner.model(X)
-            wLPredictions[:,i] = prediction
-        return WLPredictions
+            wLPredictions[:,:,i] = prediction
+        return wLPredictions
 
+    def predict(self, X):
+        # We hope to deprecate schapirePredict since we shouldn't need anymore
+        return self.schapireContinuousPredict(X, 10)
 
     def schapirePredict(self, X, k):
         wLPredictions = None
@@ -161,13 +176,8 @@ class Ensemble(MetricPlotter):
         predictions = np.zeros(len(X))
         T = len(self.weakLearners)
         
-#         if isinstance(self.weakLearners[0], str):
-#             wLPredictions = self.getWLPredictionsString(X, k)
-#         else:
-#             wLPredictions = [self.weakLearners[i].predict(X).argmax(axis=1) for i in range(T)]
-        
-        wLPredictions = self.getWLPredictions(X, k)
-        
+        wLPredictions = self.getWLPredictions(X, k).argmax(axis=1).transpose(1, 0)
+
         for i in range(len(X)):
             F_Tx =[]
             for l in range(k):
@@ -182,49 +192,56 @@ class Ensemble(MetricPlotter):
         predictions = np.zeros(len(X))
         T = len(self.weakLearners)
         
-        if isinstance(self.weakLearners[0], str):
-            wLPredictions = self.getWLPredictionsString(X, k)
-        else:
-            wLPredictions = [self.weakLearners[i].predict(X).argmax(axis=1) for i in range(T)]
+        wLPredictions = self.getWLPredictions(X, k)
+        weights = torch.tensor(self.weakLearnerWeights).unsqueeze(1).float().cuda()
+        assert(wLPredictions.shape == (len(X), k, T))
+        assert(weights.shape == (T, 1))
+        output = torch.matmul(wLPredictions, weights).squeeze(2)
+        assert(output.shape == (len(X), k))
         
-        nn_outputs = torch.tensor((k, T))
-        for i in range(T):
-            nn_outputs[:,i] = 
+        return output
     
     
-    def calc_adv_accuracy(self):
-        # TODO
-        pass
-    
-    def calc_accuracy(self, dataset, num_batches = 15, train=True):
-        totalIts = 0
-        loader = torch.utils.data.DataLoader(
-            dataset('./data', train=train, download=True, transform=transforms.Compose([
-            transforms.ToTensor(),
-            ])),
-            batch_size=100, shuffle=True)
+#     def calc_adv_accuracy(self, dataset, num_batches = 15, train = False, attack_names = []):
+#         accuracies = {}
+#         loader = torch.utils.data.DataLoader(
+#             dataset('./data', train=train, download=True, transform=transforms.Compose([
+#             transforms.ToTensor(),
+#             ])),
+#             batch_size=100, shuffle=True)
         
-        accuracy = 0
-        for data in loader:
-            train_X_default = data[0]
-            train_Y_default = data[1]
+    
+#     def calc_accuracy(self, dataset, num_batches = 15, train=True):
+#         totalIts = 0
+#         loader = torch.utils.data.DataLoader(
+#             dataset('./data', train=train, download=True, transform=transforms.Compose([
+#             transforms.ToTensor(),
+#             ])),
+#             batch_size=100, shuffle=True)
+        
+#         accuracy = 0
+#         for data in loader:
+#             train_X_default = data[0]
+#             train_Y_default = data[1]
             
-            predictions = self.schapirePredict(train_X_default.to(torch.device('cuda:0')), 10)
-            accuracy += (predictions == train_Y_default.numpy()).astype(int).sum()/len(predictions)
-            totalIts+=1
-            if totalIts > num_batches:
-                break
-        return accuracy / totalIts
+# #             predictions = self.schapirePredict(train_X_default.to(torch.device('cuda:0')), 10)
+#             predictions = self.schapireContinuousPredict(train_X_default.to(torch.device('cuda:0')), 10).argmax(axis=1).numpy()
+            
+#             accuracy += (predictions == train_Y_default.numpy()).astype(int).sum()/len(predictions)
+#             totalIts+=1
+#             if totalIts > num_batches:
+#                 break
+#         return accuracy / totalIts
     
-    def record_accuracies(self, dataset, wl_idx):
-        train_acc = self.calc_accuracy(dataset, train=True)
-        val_acc = self.calc_accuracy(dataset, train=False)
-        print("After newest WL, the ensemble's validation score is: ", train_acc)
-        print("After newest WL, the ensemble's training score is: ", val_acc)
-        self.accuracies['train'].append(train_acc)
-        self.accuracies['val'].append(val_acc)
-        self.train_checkpoints.append(wl_idx)
-        self.val_checkpoints.append(wl_idx)
+#     def record_accuracies(self, dataset, wl_idx):
+#         train_acc = self.calc_accuracy(dataset, train=True)
+#         val_acc = self.calc_accuracy(dataset, train=False)
+#         print("After newest WL, the ensemble's validation score is: ", train_acc)
+#         print("After newest WL, the ensemble's training score is: ", val_acc)
+#         self.accuracies['train'].append(train_acc)
+#         self.accuracies['val'].append(val_acc)
+#         self.train_checkpoints.append(wl_idx)
+#         self.val_checkpoints.append(wl_idx)
 
 
 def pytorch_predict(model, test_loader, device):

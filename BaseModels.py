@@ -139,25 +139,32 @@ class MetricPlotter():
             self.train_memory = []
             self.val_memory = []
 
-    def plot_train(self):
+    def plot_train_loss(self):
         plt.plot(self.train_checkpoints, self.losses['train'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Training loss')
         plt.title('Training loss')
         plt.show()
   
-    def plot_val(self):
-        plt.plot(self.val_checkpoints, self.val_losses)
+    def plot_val_loss(self):
+        plt.plot(self.val_checkpoints, self.losses['val'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Validation loss')
         plt.title('Validation loss')
         plt.show()
     
     def plot_val_accuracies(self):
-        plt.plot(self.val_checkpoints, self.val_accuracies)
+        plt.plot(self.val_checkpoints, self.accuracies['val'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Validation accuracy')
         plt.title('Validation accuracy')
+        plt.show()
+    
+    def plot_train_accuracies(self):
+        plt.plot(self.train_checkpoints, self.accuracies['train'])
+        plt.xlabel(self.xlabel)
+        plt.ylabel('Training accuracy')
+        plt.title('Training accuracy')
         plt.show()
   
     def plot_adversarial_accuracies(self):
@@ -175,29 +182,20 @@ class MetricPlotter():
                 plt.ylabel("Accuracy")
                 plt.title(f"Adversarial accuracy ({attack_name})")
     
-    def plot_wl_train_acc(self):
-        plt.plot(self.train_checkpoints, self.accuracies['train'])
-        plt.xlabel(self.xlabel)
-        plt.ylabel('Weak learner train accuracy')
-        plt.title('Weak learner train accuracy')
-        plt.show()
-    
     def plot_memory_usage(self):
         f, ax = plt.subplots()
         plt.plot(self.iters, self.memory_usage)
         plt.xlabel(self.xlabel)
         plt.ylabel("Total memory usage")
         plt.title("Memory usage over number of iterations")
-    
 
-class BaseNeuralNet(MetricPlotter):
+class Validator():
     
-    def __init__(self, netOfChoice):
-        super().__init__('Total samples')
-        self.model = netOfChoice().to(cuda)
-
-  
-    def validation(self, X, y, val_attacks=[], alpha = 1e-2, attack_iters = 50, restarts = 10, y_pred=None):
+    def predict(self, X):
+        # Must be implemented by classes that inherit Validator
+        pass
+    
+    def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha = 1e-2, attack_iters = 50, restarts = 10, y_pred=None):
 #         print("in validation")
         
         losses = {} # (non_adv, adv)
@@ -205,12 +203,12 @@ class BaseNeuralNet(MetricPlotter):
 
         # accuracy on clean examples
         if y_pred is None:
-            y_pred = self.model(X)
-        val_accuracy = (y_pred.max(1)[1] == y).sum().item() / X.shape[0]
-        val_loss = F.cross_entropy(y_pred, y).item()
+            y_pred = self.predict(X)
+        accuracy = (y_pred.max(1)[1] == y).sum().item() / X.shape[0]
+        loss = F.cross_entropy(y_pred, y).item()
         
-        losses['val'] = val_loss
-        accuracies['val'] = val_accuracy
+        losses[data_type] = loss
+        accuracies[data_type] = accuracy
         
         # accuracy on adversarial examples
         epsilons = self.attack_epsilons
@@ -226,12 +224,12 @@ class BaseNeuralNet(MetricPlotter):
                 epsilon = epsilons[i]
                 delta = None
                 if attack == attack_fgsm:
-                    delta = attack_fgsm(X, y, epsilon, self.model)
+                    delta = attack_fgsm(X, y, epsilon, self.predict)
                 else:
                     # assuming attack == attack_pgd
-                    delta = attack_pgd(X, y, epsilon, self.model, alpha, attack_iters, restarts)
+                    delta = attack_pgd(X, y, epsilon, self.predict, alpha, attack_iters, restarts)
                 X_adv = X + delta
-                y_pred = self.model(X_adv).detach()
+                y_pred = self.predict(X_adv).detach()
                 accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
                 loss = F.cross_entropy(y_pred, y)
                 losses[attack].append(loss)
@@ -239,19 +237,37 @@ class BaseNeuralNet(MetricPlotter):
     
         return losses, accuracies
     
-    def record_validation(self, val_X, val_y, currSamples, val_attacks=[]):
+    def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, val_attacks=[]):
         self.memory_usage.append(cutorch.memory_allocated(0))
-        self.val_checkpoints.append(currSamples)
-        losses, accuracies = self.validation(val_X, val_y, val_attacks = val_attacks)
-        self.losses['val'].append(losses['val'])
-        self.accuracies['val'].append(accuracies['val'])
-        for attack in losses:
-            if type(attack) != str:
-                self.losses[attack.__name__].append([]) # adding to a new currSamples
-                for i in range(len(self.epsilons)):
-                    self.losses[attack.__name__][-1].append(losses[attack.__name__][i])
-                    self.accuracies[attack.__name__][-1].append(accuracies[attack.__name__][i])
-        print("Num samples: %d,  val accuracy: %.4f" %(currSamples, self.accuracies['val'][-1]))
+        
+        if train_X is not None and train_y is not None:
+            self.train_checkpoints.append(progress)
+            losses, accuracies = self.calc_accuracies(train_X, train_y, data_type='train')
+            self.losses['train'].append(losses['train'])
+            self.accuracies['train'].append(accuracies['train'])
 
+        if val_X is not None and val_y is not None:
+            self.val_checkpoints.append(progress)
+            losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks)
+            self.losses['val'].append(losses['val'])
+            self.accuracies['val'].append(accuracies['val'])
+            for attack in losses:
+                if type(attack) != str:
+                    self.losses[attack.__name__].append([]) # adding to a new currSamples
+                    for i in range(len(self.epsilons)):
+                        self.losses[attack.__name__][-1].append(losses[attack.__name__][i])
+                        self.accuracies[attack.__name__][-1].append(accuracies[attack.__name__][i])
+            print("Progress: %d,  val accuracy: %.4f" %(progress, self.accuracies['val'][-1]))
+    
+    
+
+class BaseNeuralNet(MetricPlotter, Validator):
+    
+    def __init__(self, netOfChoice):
+        MetricPlotter.__init__(self, 'Total samples')
+        Validator.__init__(self)
+        self.model = netOfChoice().to(cuda)
+
+   # overrides the predict in Validator
     def predict(self, X):
         return self.model(X)
