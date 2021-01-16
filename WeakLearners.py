@@ -29,8 +29,10 @@ class Net(nn.Module):
 
 class WongNeuralNetMNIST(BaseNeuralNet):
 
-    def __init__(self):
+    def __init__(self, attack_eps=[], train_eps=0.3):
         super().__init__(Net)
+        self.attack_eps = attack_eps
+        self.train_eps = train_eps
 
     def fit(self, train_loader, test_loader, C, alpha = 0.375, epochs = 1, lr_max = 5e-3, adv_train=True, val_attacks = [], maxSample=None, predictionWeights=False):
         val_X = None
@@ -68,7 +70,7 @@ class WongNeuralNetMNIST(BaseNeuralNet):
                     torch.cuda.empty_cache()
                     return
                 if adv_train:
-                    loss = self.batchUpdate(X, y, C, alpha = alpha)
+                    loss = self.batchUpdate(X, y, alpha = alpha)
                     self.losses['train'].append(loss.item())
                 else:
                     # print("MB(%d), "%(i), end="")
@@ -84,8 +86,9 @@ class WongNeuralNetMNIST(BaseNeuralNet):
 
         torch.cuda.empty_cache()
     
-    def batchUpdate(self, X, y, epsilon = 0.3, alpha = 0.375):
-        print("doing adversarial batchUpdate")
+    def batchUpdate(self, X, y, alpha = 0.375):
+        epsilon = self.train_eps
+#         print("doing adversarial batchUpdate")
         self.model.train()
         N = X.size()[0]
 
@@ -113,8 +116,9 @@ class WongNeuralNetMNIST(BaseNeuralNet):
         optimizer.step()
         return loss
 
-    def batchUpdate_phase3(self, X, y, C, epsilon = 0.3, alpha = 0.375):
+    def batchUpdate_phase3(self, X, y, C, alpha = 0.375):
         print("starting batchUpdate")
+        epsilon = self.train_eps
         def cross_entropy(pred, soft_targets):
             logsoftmax = nn.LogSoftmax()
             return torch.mean(torch.sum(- soft_targets * logsoftmax(pred), 1))
@@ -153,7 +157,8 @@ class WongNeuralNetMNIST(BaseNeuralNet):
         optimizer.step()
         return loss
   
-    def batchUpdateNonAdv(self, X, y, indices, C, epochs = 1, epsilon = 0.3, alpha = 0.375, predictionWeights=False):
+    def batchUpdateNonAdv(self, X, y, indices, C, epochs = 1, alpha = 0.375, predictionWeights=False):
+        epsilon = self.train_eps
         self.model.train()
         N = X.size()[0]
         optimizer = self.optimizer
@@ -202,8 +207,10 @@ class WongNeuralNetMNIST(BaseNeuralNet):
     
     
 class WongNeuralNetCIFAR10(BaseNeuralNet):
-    def __init__(self):
+    def __init__(self, attack_eps = [], train_eps=8):
         super().__init__(PreActResNet18)
+        self.train_eps = train_eps
+        self.attack_eps = attack_eps
     
     def fit(self, train_loader, test_loader, C=None, epochs=100, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
                   momentum=0.9, epsilon=8, alpha=10, delta_init="random", seed=0, opt_level="O2", loss_scale=1.0, out_dir="WongNNCifar10",
@@ -227,9 +234,12 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
-        epsilon = (epsilon / 255.) / std
+        epsilon = (self.train_eps / 255.) / std
         alpha = (alpha / 255.) / std
         pgd_alpha = (2 / 255.) / std
+        
+        if delta_init == 'previous':
+            delta = torch.zeros(train_loader.batch_size, 3, 32, 32).cuda()
 
         model = self.model
         # model = PreActResNet18().cuda()
@@ -260,6 +270,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
 #         logger.info('Epoch \t Seconds \t LR \t \t Train Loss \t Train Acc')
         currSamples = 0
         done = False
+        delta = None
         for epoch in range(epochs):
             print("Epoch %d"%(epoch))
             start_epoch_time = time.time()
@@ -276,7 +287,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     first_batch = (X, y)
                 
                 if adv_train:
-                    loss = self.batchUpdate(X, y, epsilon, delta)
+                    loss = self.batchUpdate(X, y, epsilon, delta, delta_init=delta_init, alpha=alpha)
                     self.losses['train'].append(loss.item())
                 else:
                     loss = self.batchUpdateNonAdv(X, y)
@@ -312,7 +323,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         torch.cuda.empty_cache()
         train_time = time.time()
         
-    def batchUpdate(self, X, y, epsilon, delta):
+    def batchUpdate(self, X, y, epsilon, delta, delta_init='random', alpha=0):
         from utils import (upper_limit, lower_limit, std, clamp, get_loaders,
         attack_pgd, evaluate_pgd, evaluate_standard) # delete whichever ones are unnecessary
         if delta_init != 'previous':
@@ -325,15 +336,16 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
 
         delta.requires_grad = True
         with torch.cuda.amp.autocast():
-            output = model(X + delta[:X.size(0)])
+            output = self.model(X + delta[:X.size(0)])
             loss = F.cross_entropy(output, y)
+        scaler = torch.cuda.amp.GradScaler()
         scaler.scale(loss).backward()
 
         grad = delta.grad.detach()
         delta.data = clamp(delta + alpha * torch.sign(grad), -epsilon, epsilon)
         delta.data[:X.size(0)] = clamp(delta[:X.size(0)], lower_limit - X, upper_limit - X)
         delta = delta.detach()
-        output = model(X + delta[:X.size(0)])
+        output = self.model(X + delta[:X.size(0)])
         criterion = nn.CrossEntropyLoss()
         loss = criterion(output, y)
         return loss
@@ -343,29 +355,6 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         criterion = nn.CrossEntropyLoss()
         loss = criterion(output, y)
         return loss
-        
-    
-    def batchUpdate(X, y, delta):
-        grad = delta.grad.detach()
-        delta.data = clamp(delta + alpha * torch.sign(grad), -epsilon, epsilon)
-        delta.data[:X.size(0)] = clamp(delta[:X.size(0)], lower_limit - X, upper_limit - X)
-        delta = delta.detach()
-        # print("memory usage:", cutorch.memory_allocated(0))
-        output = model(X + delta[:X.size(0)])
-        # print("memory usage:", cutorch.memory_allocated(0))
-        loss = criterion(output, y)
-        self.loss = loss
-        opt.zero_grad()
-        with amp.scale_loss(loss, opt) as scaled_loss:
-            scaled_loss.backward()
-        opt.step()
-        train_loss += loss.item() * y.size(0)
-        train_acc += (output.max(1)[1] == y).sum().item()
-        train_n += y.size(0)
-        scheduler.step()
-        del X
-        del y
-        torch.cuda.empty_cache()
 
     def batchUpdateNonAdv(X, y):
         self.model.train()

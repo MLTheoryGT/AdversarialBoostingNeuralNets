@@ -9,7 +9,7 @@ from WeakLearners import WongNeuralNetCIFAR10, Net
 from pytorch_memlab import LineProfiler 
 from BaseModels import MetricPlotter, Validator
 
-def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10):
+def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10):
     """
         Args:
             maxSamples: either None or a list for each wl
@@ -62,7 +62,8 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
 
     f = np.zeros((m, k))    
     
-    ensemble = Ensemble(weakLearnerType=weakLearnerType)
+    print("attack eps ens", attack_eps_ensemble)
+    ensemble = Ensemble(weakLearnerType=weakLearnerType, attack_eps=attack_eps_ensemble)
 
     for t, maxSample in enumerate(maxSamples):
         print("-"*100)
@@ -81,7 +82,7 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         train_loader = torch.utils.data.DataLoader(train_ds_index, sampler=train_sampler, batch_size=batch_size)
         
         # Fit WL on weighted subset of data
-        h_i = weakLearner()
+        h_i = weakLearner(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
         h_i.fit(train_loader, test_loader, C_t, adv_train=adv_train, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
         
         # Get training acuracy of WL
@@ -110,12 +111,13 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0
         # grab accuracy of full ensemble
         divider = 1
         if t % divider == 0:
+#             print("VAL ATTACKS", val_attacks)
             ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
         
     return ensemble
 
 class Ensemble(MetricPlotter, Validator):
-    def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10):
+    def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10, attack_eps=[]):
         """
         """
         MetricPlotter.__init__(self, 'Number of weak learners')
@@ -124,12 +126,16 @@ class Ensemble(MetricPlotter, Validator):
         self.weakLearnerWeights = weakLearnerWeights
         self.weakLearnerType = weakLearnerType
         self.accuracies['wl_train'] = []
+        self.attack_eps = attack_eps
 
-    def plot_wl_train_acc(self):
+    def plot_wl_train_acc(self, path=None):
+        plt.subplots()
         plt.plot(self.train_checkpoints, self.accuracies['wl_train'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Weak learner train accuracy')
         plt.title('Weak learner train accuracy')
+        if path is not None:
+            plt.savefig(path, dpi=250)
         plt.show()
     
     def addWeakLearner(self, weakLearner, weakLearnerWeight):
@@ -299,7 +305,9 @@ class BoostingSampler(Sampler):
     def setC(self, C):
         self.C = C
 
-def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10, adv_train=False, val_attacks=[]):
+def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10, adv_train=False, val_attacks=[],
+               attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3):
+    
     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
                 transforms.ToTensor(),
                 ]))
@@ -317,7 +325,7 @@ def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=Won
 
     t0 = datetime.now()
 
-    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, advDelta=0, alphaTol=1e-10, adv_train=adv_train, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType)
+    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train=adv_train, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn)
 
     print("Finished in", (datetime.now()-t0).total_seconds(), " s")
     

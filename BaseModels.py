@@ -132,55 +132,93 @@ class MetricPlotter():
 
         self.losses = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
         self.accuracies = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
-        self.attack_epsilons=[0., 0.01, 0.05, 0.1, 0.2, 0.3, 0.4]
         
-        for i in range(len(self.attack_epsilons)):
-            self.memory_usage = []
-            self.train_memory = []
-            self.val_memory = []
+#         for i in range(len(self.attack_eps)):
+#             self.memory_usage = []
+#             self.train_memory = []
+#             self.val_memory = []
 
-    def plot_train_loss(self):
+    def plot_train_loss(self, path=None):
+        plt.subplots()
         plt.plot(self.train_checkpoints, self.losses['train'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Training loss')
         plt.title('Training loss')
+        if path is not None:
+            plt.savefig(path, dpi=250)
         plt.show()
   
-    def plot_val_loss(self):
+    def plot_val_loss(self, path=None):
+        plt.subplots()
         plt.plot(self.val_checkpoints, self.losses['val'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Validation loss')
         plt.title('Validation loss')
+        if path is not None:
+            plt.savefig(path, dpi=250)
         plt.show()
     
-    def plot_val_accuracies(self):
+    def plot_val_accuracies(self, path=None):
+        plt.subplots()
         plt.plot(self.val_checkpoints, self.accuracies['val'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Validation accuracy')
         plt.title('Validation accuracy')
+        if path is not None:
+            plt.savefig(path, dpi=250)
         plt.show()
     
-    def plot_train_accuracies(self):
+    def plot_train_accuracies(self, path=None):
+        plt.subplots()
         plt.plot(self.train_checkpoints, self.accuracies['train'])
         plt.xlabel(self.xlabel)
         plt.ylabel('Training accuracy')
         plt.title('Training accuracy')
+        if path is not None:
+            plt.savefig(path, dpi=250)
+        plt.show()
+        
+    def plot_accuracies(self, path=None):
+        plt.subplots()
+        plt.plot(self.train_checkpoints, self.accuracies['train'])
+        plt.plot(self.val_checkpoints, self.accuracies['val'])
+        plt.xlabel(self.xlabel)
+        plt.ylabel("Accuracy")
+        plt.legend(["Training accuracy", "Validation accuracy"])
+        plt.title("Accuracy")
+        if path is not None:
+            plt.savefig(path, dpi=250)
+        plt.show()
+    
+    def plot_loss(self, path=None):
+        plt.subplots()
+        plt.plot(self.train_checkpoints, self.losses['train'])
+        plt.plot(self.val_checkpoints, self.losses['val'])
+        plt.xlabel(self.xlabel)
+        plt.ylabel("Loss")
+        plt.legend(["Training loss", "Validation loss"])
+        plt.title("Loss")
+        if path is not None:
+            plt.savefig(path, dpi=250)
         plt.show()
   
-    def plot_adversarial_accuracies(self):
+    def plot_adversarial_accuracies(self, path=None):
         # f, ax = plt.subplots(12)
         colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
         plt.subplots()
         for attack_name in self.losses:
-            if attack not in ['val', 'train']:
-                    
-                for i in range(len(self.attack_epsilons)):
-                    plt.plot(self.val_checkpoints, self.accuracies[attack_name][i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_epsilons[i]))
+            if attack_name not in ['val', 'train']:
+                if len(self.accuracies[attack_name]) == 0: continue
+                for i in range(len(self.attack_eps)):
+                    plt.plot(self.val_checkpoints, self.accuracies[attack_name][i], color = colors[i], label = 'Epsilon = {}'.format(self.attack_eps[i]))
 
                 plt.legend()
                 plt.xlabel(self.xlabel)
                 plt.ylabel("Accuracy")
                 plt.title(f"Adversarial accuracy ({attack_name})")
+        if path is not None:
+            plt.savefig(path, dpi=250)
+        plt.show()
     
     def plot_memory_usage(self):
         f, ax = plt.subplots()
@@ -211,16 +249,17 @@ class Validator():
         accuracies[data_type] = accuracy
         
         # accuracy on adversarial examples
-        epsilons = self.attack_epsilons
-
+        epsilons = self.attack_eps
+        
+#         print("self.attack_eps", self.attack_eps)
         # TODO: modify the below block when I want to also test PGD
         for attack in val_attacks:
-            print("about to attack")
+#             print("about to attack")
             losses[attack] = []
             accuracies[attack] = []
 
-            for i in range(len(epsilons)):
-                print("epsilon:", epsilons[i])
+            for i in range(len(self.attack_eps)):
+#                 print("epsilon:", epsilons[i])
                 epsilon = epsilons[i]
                 delta = None
                 if attack == attack_fgsm:
@@ -238,7 +277,7 @@ class Validator():
         return losses, accuracies
     
     def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, val_attacks=[]):
-        self.memory_usage.append(cutorch.memory_allocated(0))
+#         self.memory_usage.append(cutorch.memory_allocated(0))
         
         if train_X is not None and train_y is not None:
             self.train_checkpoints.append(progress)
@@ -251,12 +290,18 @@ class Validator():
             losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks)
             self.losses['val'].append(losses['val'])
             self.accuracies['val'].append(accuracies['val'])
+#             print("losses", losses)
+#             print("self.losses", self.losses)
             for attack in losses:
+#                 print("in loop attack: ", attack)
+                
                 if type(attack) != str:
-                    self.losses[attack.__name__].append([]) # adding to a new currSamples
-                    for i in range(len(self.epsilons)):
-                        self.losses[attack.__name__][-1].append(losses[attack.__name__][i])
-                        self.accuracies[attack.__name__][-1].append(accuracies[attack.__name__][i])
+                    if len(self.losses[attack.__name__]) == 0:
+                        self.losses[attack.__name__] = [[] for i in range(len(self.attack_eps))]
+                        self.accuracies[attack.__name__] = [[] for i in range(len(self.attack_eps))]
+                    for i in range(len(self.attack_eps)):
+                        self.losses[attack.__name__][i].append(losses[attack][i])
+                        self.accuracies[attack.__name__][i].append(accuracies[attack][i])
             print("Progress: %d,  val accuracy: %.4f" %(progress, self.accuracies['val'][-1]))
     
     
