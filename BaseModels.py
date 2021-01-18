@@ -273,11 +273,15 @@ class Validator():
                 loss = F.cross_entropy(y_pred, y)
                 losses[attack].append(loss)
                 accuracies[attack].append(accuracy)
-    
+                del delta
+                del X_adv
+                del y_pred
+        torch.cuda.empty_cache()
         return losses, accuracies
     
     def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, val_attacks=[]):
 #         self.memory_usage.append(cutorch.memory_allocated(0))
+#         print("memory:", cutorch.)
         
         if train_X is not None and train_y is not None:
             self.train_checkpoints.append(progress)

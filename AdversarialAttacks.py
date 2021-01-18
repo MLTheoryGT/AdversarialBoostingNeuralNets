@@ -8,6 +8,7 @@ def attack_fgsm(X, y, epsilon, model):
     loss.backward()
     grad = delta.grad.detach()
     delta.data = epsilon * torch.sign(grad)
+    del output
     return delta.detach()
 
 
