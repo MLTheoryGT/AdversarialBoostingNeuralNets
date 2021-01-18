@@ -86,10 +86,13 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
         # Fit WL on weighted subset of data
         h_i = weakLearner(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
         h_i.fit(train_loader, test_loader, C_t, adv_train=adv_train, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
+        a = 0 # for memory debugging purposes
         
         # Get training acuracy of WL
-        _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
+        a, predictions, b = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
         wl_train_acc = (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions)
+        del a
+        del b
         ensemble.accuracies['wl_train'].append(wl_train_acc)
         print("Training accuracy of weak learner: ", wl_train_acc)
         
@@ -116,7 +119,7 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
 #             print("VAL ATTACKS", val_attacks)
             print("t: ", t, "memory allocated:", cutorch.memory_allocated(0))
             ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
-        
+        a = 0 # for memory-debugging
     return ensemble
 
 class Ensemble(MetricPlotter, Validator):

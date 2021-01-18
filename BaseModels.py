@@ -243,9 +243,10 @@ class Validator():
         if y_pred is None:
             y_pred = self.predict(X)
         accuracy = (y_pred.max(1)[1] == y).sum().item() / X.shape[0]
-        loss = F.cross_entropy(y_pred, y).item()
+        loss = F.cross_entropy(y_pred, y)
         
-        losses[data_type] = loss
+        losses[data_type] = loss.item()
+        del loss
         accuracies[data_type] = accuracy
         
         # accuracy on adversarial examples
@@ -271,10 +272,11 @@ class Validator():
                 y_pred = self.predict(X_adv).detach()
                 accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
                 loss = F.cross_entropy(y_pred, y)
-                losses[attack].append(loss)
+                losses[attack].append(loss.item())
                 accuracies[attack].append(accuracy)
                 del delta
                 del X_adv
+                del loss
                 del y_pred
         torch.cuda.empty_cache()
         return losses, accuracies

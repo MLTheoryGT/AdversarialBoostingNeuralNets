@@ -9,7 +9,10 @@ def attack_fgsm(X, y, epsilon, model):
     grad = delta.grad.detach()
     delta.data = epsilon * torch.sign(grad)
     del output
-    return delta.detach()
+    del loss
+    ans = delta.detach()
+    del delta
+    return ans
 
 
 def attack_pgd(X, y, epsilon, model, alpha, attack_iters, restarts):

@@ -305,6 +305,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                 torch.cuda.empty_cache()
 
             if early_stop:
+                a = 0 #memory-debugging
                 # Check current PGD robustness of model using random minibatch
                 X, y = first_batch
                 pgd_delta = attack_pgd(model, X, y, epsilon, pgd_alpha, 5, 1, opt)
