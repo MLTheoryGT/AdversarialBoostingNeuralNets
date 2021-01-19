@@ -9,6 +9,7 @@ from WeakLearners import WongNeuralNetCIFAR10, Net
 from pytorch_memlab import LineProfiler 
 from BaseModels import MetricPlotter, Validator
 import torch.cuda as cutorch
+import gc
 
 def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10, batch_size=200):
     """
@@ -85,6 +86,7 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
         
         # Fit WL on weighted subset of data
         h_i = weakLearner(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
+        
         h_i.fit(train_loader, test_loader, C_t, adv_train=adv_train, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
         a = 0 # for memory debugging purposes
         
@@ -108,18 +110,36 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
         path_name = 'mnist' if dataset==datasets.MNIST else 'cifar10'
         model_path = f'./models/{path_name}_wl_{t}.pth'
         torch.save(h_i.model.state_dict(), model_path)
+
+        del h_i.model
         del h_i
         del predictions
+        
         torch.cuda.empty_cache()
         ensemble.addWeakLearner(model_path, alpha)
         
         # grab accuracy of full ensemble
-        divider = 1
-        if t % divider == 0:
+#         divider = 1
+#         if t % divider == 0:
 #             print("VAL ATTACKS", val_attacks)
-            print("t: ", t, "memory allocated:", cutorch.memory_allocated(0))
-            ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
+
+        # 2 NN params on it 2
+
+                
+        print("t: ", t, "memory allocated:", cutorch.memory_allocated(0))    
+        ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
         a = 0 # for memory-debugging
+        
+        
+        if t == 0:
+            for obj in gc.get_objects():
+                try:
+                    if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                        print(type(obj), obj.size())
+                except:
+                    pass
+
+        
     return ensemble
 
 class Ensemble(MetricPlotter, Validator):
@@ -147,26 +167,11 @@ class Ensemble(MetricPlotter, Validator):
     def addWeakLearner(self, weakLearner, weakLearnerWeight):
         self.weakLearners.append(weakLearner)
         self.weakLearnerWeights.append(weakLearnerWeight)
-
-    def getWLPredictionsString(self, X, k, argmax=True):
-        T = len(self.weakLearners)
-        wLPredictions = []
-        for i in range(T):
-            learner = self.weakLearnerType()
-            learner.model.load_state_dict(torch.load(self.weakLearners[i]))
-            learner.model = learner.model.to(torch.device('cuda:0'))
-            learner.model.eval()
-            if argmax:
-                prediction = learner.model(X).argmax(axis = 1)
-            else:
-                prediction = learner.model(X)
-            del learner
-            wLPredictions.append(prediction)
-        return wLPredictions
     
     def getWLPredictions(self, X, k):
         T = len(self.weakLearners)
         wLPredictions = torch.zeros((X.shape[0], k, T)).cuda()
+                    
         for i in range(T):
             if not isinstance(self.weakLearners[i], str):
                 learner = self.weakLearners[i]
@@ -177,6 +182,8 @@ class Ensemble(MetricPlotter, Validator):
                 learner.model.eval()
             prediction = learner.model(X)
             wLPredictions[:,:,i] = prediction
+            del learner.model
+            del learner
         return wLPredictions
 
     def predict(self, X):
@@ -184,6 +191,7 @@ class Ensemble(MetricPlotter, Validator):
         return self.schapireContinuousPredict(X, 10)
 
     def schapirePredict(self, X, k):
+                
         wLPredictions = None
 
         predictions = np.zeros(len(X))
@@ -202,7 +210,6 @@ class Ensemble(MetricPlotter, Validator):
     def schapireContinuousPredict(self, X, k):
         wLPredictions = None
 
-        predictions = np.zeros(len(X))
         T = len(self.weakLearners)
         
         wLPredictions = self.getWLPredictions(X, k)

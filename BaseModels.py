@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 cuda = torch.device('cuda:0')
 import torch.cuda as cutorch
+import gc
 
 
 class Flatten(nn.Module):
@@ -238,10 +239,14 @@ class Validator():
         
         losses = {} # (non_adv, adv)
         accuracies = {}
+                
+                
 
         # accuracy on clean examples
         if y_pred is None:
-            y_pred = self.predict(X)
+            y_pred = self.predict(X).detach() # did this to debug memory issues (1 / 18)
+            y_pred.requires_grad=False
+        
         accuracy = (y_pred.max(1)[1] == y).sum().item() / X.shape[0]
         loss = F.cross_entropy(y_pred, y)
         
@@ -284,6 +289,15 @@ class Validator():
     def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, val_attacks=[]):
 #         self.memory_usage.append(cutorch.memory_allocated(0))
 #         print("memory:", cutorch.)
+
+        # seems that at this point there are already NN params, but right before calling this function there are no NN params???? (1/18)
+#         if len(self.weakLearners) == 2 and self.xlabel == 'Number of weak learners':
+#             for obj in gc.get_objects():
+#                 try:
+#                     if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+#                         print(type(obj), obj.size())
+#                 except:
+#                     pass
         
         if train_X is not None and train_y is not None:
             self.train_checkpoints.append(progress)

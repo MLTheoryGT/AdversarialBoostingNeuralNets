@@ -300,8 +300,10 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                 scaler.step(opt)
                 scaler.update()
                 scheduler.step()
+                del loss
                 del X
                 del y
+                del data
                 torch.cuda.empty_cache()
 
             if early_stop:
@@ -321,10 +323,14 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
             
             if done:
                 break
+        del val_X
+        del val_y
+        del delta
         torch.cuda.empty_cache()
         train_time = time.time()
         
     def batchUpdate(self, X, y, epsilon, delta, delta_init='random', alpha=0):
+        a = 0 # memory-debugging
         from utils import (upper_limit, lower_limit, std, clamp, get_loaders,
         attack_pgd, evaluate_pgd, evaluate_standard) # delete whichever ones are unnecessary
         if delta_init != 'previous':
@@ -347,8 +353,11 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         delta.data[:X.size(0)] = clamp(delta[:X.size(0)], lower_limit - X, upper_limit - X)
         delta = delta.detach()
         output = self.model(X + delta[:X.size(0)])
+        del delta
         criterion = nn.CrossEntropyLoss()
         loss = criterion(output, y)
+        del output
+        del grad
         return loss
         
     def batchUpdateNonAdv(self, X, y, indices, C, epsilon = 0.3, alpha = 0.375, predictionWeights=False):
