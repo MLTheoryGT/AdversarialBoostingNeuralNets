@@ -10,18 +10,9 @@ from pytorch_memlab import LineProfiler
 from BaseModels import MetricPlotter, Validator
 import torch.cuda as cutorch
 import gc
+import sys
 
-def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, weakLearnerType=WongNeuralNetCIFAR10, batch_size=200):
-    """
-        Args:
-            maxSamples: either None or a list for each wl
-    """
-    if maxSamples is None:
-        maxSamples = [500 for i in range(numLearners)]
-    else:
-        maxSamples = [maxSamples for i in range(numLearners)]
-    assert(numLearners == len(maxSamples))
-    
+def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200):
     def dataset_with_indices(cls):
         """
         Modifies the given Dataset class to return a tuple data, target, index
@@ -35,6 +26,13 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
         return type(cls.__name__, (cls,), {
             '__getitem__': __getitem__,
         })
+    
+    if maxSamples is None:
+        maxSamples = [500 for i in range(numLearners)]
+    else:
+        maxSamples = [maxSamples for i in range(numLearners)]
+    assert(numLearners == len(maxSamples))
+    
     dataset_index = dataset_with_indices(dataset)
 
     train_ds_index = dataset_index('./data', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(),]))
@@ -45,8 +43,6 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
     m = len(train_ds_index)
     k = len(train_ds_index.classes)
     
-    
-
     test_loader = torch.utils.data.DataLoader(test_ds_index, batch_size=batch_size, shuffle=False)
     for data in test_loader:
         val_X = data[0].cuda()
@@ -67,8 +63,8 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
     
     print("attack eps ens", attack_eps_ensemble)
     ensemble = Ensemble(weakLearnerType=weakLearnerType, attack_eps=attack_eps_ensemble)
-
-    for t, maxSample in enumerate(maxSamples):
+    
+    def gcLoop():
         print("-"*100)
         print("Training weak learner {}".format(t))
         # Boosting matrix update
@@ -85,9 +81,15 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
         train_loader = torch.utils.data.DataLoader(train_ds_index, sampler=train_sampler, batch_size=batch_size)
         
         # Fit WL on weighted subset of data
-        h_i = weakLearner(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
+        h_i = weakLearnerType(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
+        print("1 num references to our NN class: ", sys.getrefcount(h_i))
+        print("1 num references to our NN class: ", sys.getrefcount(h_i.model))
+#         print("references to our NN class: ", gc.get_referrers(h_i))
+#         print("references to our NN class: ", gc.get_referrers(h_i.model))
         
         h_i.fit(train_loader, test_loader, C_t, adv_train=adv_train, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
+        print("2 num references to our NN class: ", sys.getrefcount(h_i))
+        print("2 num references to our NN class: ", sys.getrefcount(h_i.model))
         a = 0 # for memory debugging purposes
         
         # Get training acuracy of WL
@@ -110,10 +112,26 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
         path_name = 'mnist' if dataset==datasets.MNIST else 'cifar10'
         model_path = f'./models/{path_name}_wl_{t}.pth'
         torch.save(h_i.model.state_dict(), model_path)
+        
+        
 
+#         print("references to our NN class: ", gc.get_referrers(h_i))
+#         print("references to our NN class: ", gc.get_referrers(h_i.model))
+#         print("All tracked objects: ", gc.get_objects())
+        h_iRef = h_i
+        h_iModelRef = h_i.model
+        print("3 num references to our NN class: ", sys.getrefcount(h_i))
+        print("3 num references to our NN class: ", sys.getrefcount(h_i.model))
         del h_i.model
         del h_i
         del predictions
+        print("4 num references to our NN class: ", sys.getrefcount(h_iRef))
+        print("4 num references to our NN class: ", sys.getrefcount(h_iModelRef))
+        
+#         print("num references to our NN class: ", sys.getrefcount(h_iRef))
+#         print("num references to our NN class: ", sys.getrefcount(h_iModelRef))
+#         print("references to our NN class: ", gc.get_referrers(h_iRef))
+#         print("references to our NN class: ", gc.get_referrers(h_iModelRef))
         
         torch.cuda.empty_cache()
         ensemble.addWeakLearner(model_path, alpha)
@@ -130,7 +148,15 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
         ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
         a = 0 # for memory-debugging
         
-        
+    #end of gc loop
+    """
+        Args:
+            maxSamples: either None or a list for each wl
+    """
+
+    for t, maxSample in enumerate(maxSamples):
+        gcLoop()
+        gc.collect()
         if t == 0:
             for obj in gc.get_objects():
                 try:
@@ -138,9 +164,10 @@ def SchapireWongMulticlassBoosting(weakLearner, numLearners, dataset, alphaTol=1
                         print(type(obj), obj.size())
                 except:
                     pass
-
         
     return ensemble
+
+
 
 class Ensemble(MetricPlotter, Validator):
     def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10, attack_eps=[]):
@@ -340,7 +367,7 @@ def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=Won
 
     t0 = datetime.now()
 
-    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train=adv_train, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, weakLearnerType=weakLearnerType, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size)
+    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train=adv_train, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size)
 
     print("Finished in", (datetime.now()-t0).total_seconds(), " s")
     
