@@ -157,7 +157,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     for t, maxSample in enumerate(maxSamples):
         gcLoop()
         gc.collect()
-        if t == 0:
+        if t == 3:
             for obj in gc.get_objects():
                 try:
                     if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
