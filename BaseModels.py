@@ -298,7 +298,7 @@ class Validator():
 #                         print(type(obj), obj.size())
 #                 except:
 #                     pass
-        
+            
         if train_X is not None and train_y is not None:
             self.train_checkpoints.append(progress)
             losses, accuracies = self.calc_accuracies(train_X, train_y, data_type='train')
