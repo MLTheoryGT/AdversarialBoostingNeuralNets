@@ -310,6 +310,7 @@ class Validator():
             losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks)
             self.losses['val'].append(losses['val'])
             self.accuracies['val'].append(accuracies['val'])
+            print("Val accuracy:", accuracies['val'])
 #             print("losses", losses)
 #             print("self.losses", self.losses)
             for attack in losses:

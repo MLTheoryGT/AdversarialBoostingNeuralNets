@@ -11,6 +11,7 @@ from BaseModels import MetricPlotter, Validator
 import torch.cuda as cutorch
 import gc
 import sys
+from utils import cifar10_mean, cifar10_std
 
 def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200):
     def dataset_with_indices(cls):
@@ -34,9 +35,14 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     assert(numLearners == len(maxSamples))
     
     dataset_index = dataset_with_indices(dataset)
+    
+    to_compose = [transforms.ToTensor()]
+    if dataset == datasets.CIFAR10:
+        to_compose.append(transforms.Normalize(cifar10_mean, cifar10_std))
+    assert(len(to_compose) == 2)
 
-    train_ds_index = dataset_index('./data', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(),]))
-    test_ds_index = dataset_index('./data', train=False, download=True, transform=transforms.Compose([transforms.ToTensor(),]))
+    train_ds_index = dataset_index('./data', train=True, download=True, transform=transforms.Compose(to_compose))
+    test_ds_index = dataset_index('./data', train=False, download=True, transform=transforms.Compose(to_compose))
     train_ds_index.targets = torch.tensor(np.array(train_ds_index.targets))
     test_ds_index.targets = torch.tensor(np.array(test_ds_index.targets))
 
@@ -44,16 +50,16 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     k = len(train_ds_index.classes)
     
     # Regular loaders used for training
-    test_loader = torch.utils.data.DataLoader(test_ds_index, batch_size=batch_size, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_ds_index, batch_size=batch_size, shuffle=True)
     for data in test_loader:
         val_X = data[0].cuda()
         val_y = data[1].cuda()
         break
 
     train_loader_default = torch.utils.data.DataLoader(
-        dataset('./data', train=True, download=True, transform=transforms.Compose([
-            transforms.ToTensor(),
-            ])),
+        dataset('./data', train=True, download=True, transform=transforms.Compose(
+            to_compose
+            )),
         batch_size=batch_size, shuffle=False)
     for data in train_loader_default:
         train_X = data[0].cuda()
@@ -61,13 +67,13 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         break
        
     #mini loaders for ensemble
-    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=10, shuffle=False)
+    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=10, shuffle=True)
 
     train_loader_mini = torch.utils.data.DataLoader(
-        dataset('./data', train=True, download=True, transform=transforms.Compose([
-            transforms.ToTensor(),
-            ])),
-        batch_size=10, shuffle=False)
+        dataset('./data', train=True, download=True, transform=transforms.Compose(
+            to_compose
+            )),
+        batch_size=10, shuffle=True) #change to True?
 
     f = np.zeros((m, k))    
     
@@ -128,7 +134,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
                 
         print("t: ", t, "memory allocated:", cutorch.memory_allocated(0))    
 #         ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
-        ensemble.record_accuracies(t, train_loader_mini, test_loader_mini, 50, 50, val_attacks=val_attacks)
+        ensemble.record_accuracies(t, train_loader_mini, test_loader_mini, 200, 200, val_attacks=val_attacks)
         a = 0 # for memory-debugging
         
     #end of gc loop
@@ -241,6 +247,8 @@ class Ensemble(MetricPlotter, Validator):
         wLPredictions = self.getWLPredictions(X, k)
         weights = torch.tensor(self.weakLearnerWeights).unsqueeze(1).float().cuda()
         assert(wLPredictions.shape == (len(X), k, T))
+        print("weights shape:", weights.shape)
+        print("T:", T)
         assert(weights.shape == (T, 1))
         output = torch.matmul(wLPredictions, weights).squeeze(2)
         del wLPredictions
@@ -329,8 +337,6 @@ class Ensemble(MetricPlotter, Validator):
         
         train_batch_size = train_loader.batch_size
         self.train_checkpoints.append(progress)
-        train_loss = 0
-        train_acc = 0
         # sum losses
         # average accuracies
         curSample = 0
@@ -437,20 +443,20 @@ class BoostingSampler(Sampler):
 def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10, adv_train=False, val_attacks=[],
                attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3, batch_size=200):
     
-    train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
-                transforms.ToTensor(),
-                ]))
+#     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
+#                 transforms.ToTensor(),
+#                 ]))
 
-    test_dataset = dataset('./data', train=False, download=True, transform=transforms.Compose([
-                transforms.ToTensor(),
-                ]))
+#     test_dataset = dataset('./data', train=False, download=True, transform=transforms.Compose([
+#                 transforms.ToTensor(),
+#                 ]))
 
     from datetime import datetime
-    test_loader = torch.utils.data.DataLoader(test_dataset,batch_size=batch_size, shuffle=False)
-    for data in test_loader:
-        val_X = data[0]
-        val_y = data[1]
-        break
+#     test_loader = torch.utils.data.DataLoader(test_dataset,batch_size=batch_size, shuffle=False)
+#     for data in test_loader:
+#         val_X = data[0]
+#         val_y = data[1]
+#         break
 
     t0 = datetime.now()
 
