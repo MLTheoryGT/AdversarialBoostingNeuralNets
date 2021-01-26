@@ -65,3 +65,6 @@ for each experiment and use a prefix)
 - TODO
     * Test the scripts with adversarially robust weak learner
     * Figure out how to adversarially attack an ensemble
+    
+# Jan 26 2021
+- Hypothesis: correlation between the amount the ensemble's acc increases as we add weak learners and the distance between train and val for each weak learner
