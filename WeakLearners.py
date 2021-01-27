@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 import torch.cuda as cutorch
 cuda = torch.device('cuda:0')
+from datetime import datetime
 
 class Net(nn.Module):
     def __init__(self):
@@ -281,19 +282,20 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     break
                 X, y = data[0].cuda(), data[1].cuda()
                 if i % 100 == 99:
-                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y , val_attacks=val_attacks)
+                    print("about to record accs", val_attacks)
+                    self.record_accuracies(currSamples, train_X = X, train_y = y, val_X=val_X, val_y=val_y , val_attacks=val_attacks)
                     
                 if i == 0:
                     first_batch = (X, y)
                 
                 if adv_train:
                     loss = self.batchUpdate(X, y, epsilon, delta, delta_init=delta_init, alpha=alpha)
-                    self.losses['train'].append(loss.item())
+#                     self.losses['train'].append(loss.item())
                 else:
                     loss = self.batchUpdateNonAdv(X, y)
-                    self.losses['train'].append(loss.item())
+#                     self.losses['train'].append(loss.item())
                 
-                self.train_checkpoints.append(currSamples)
+#                 self.train_checkpoints.append(currSamples)
 
                 opt.zero_grad()
                 scaler.scale(loss).backward()
@@ -327,7 +329,8 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         del val_y
         del delta
         torch.cuda.empty_cache()
-        train_time = time.time()
+        end_train_time = time.time()
+        print("Total training time{}".format(end_train_time - start_train_time))
         
     def batchUpdate(self, X, y, epsilon, delta, delta_init='random', alpha=0):
         a = 0 # memory-debugging

@@ -36,13 +36,21 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     
     dataset_index = dataset_with_indices(dataset)
     
-    to_compose = [transforms.ToTensor()]
+    train_transforms = [transforms.ToTensor()]
+    test_transforms = [transforms.ToTensor()]
+    
     if dataset == datasets.CIFAR10:
-        to_compose.append(transforms.Normalize(cifar10_mean, cifar10_std))
-    assert(len(to_compose) == 2)
+        norm = transforms.Normalize(cifar10_mean, cifar10_std)
+        train_transforms.append(norm)
+        test_transforms.append(norm)
+        for elt in [transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip()]:
+            train_transforms.append(elt)
+                
+    assert(len(train_transforms) == 4)
+    assert(len(test_transforms) == 2)
 
-    train_ds_index = dataset_index('./data', train=True, download=True, transform=transforms.Compose(to_compose))
-    test_ds_index = dataset_index('./data', train=False, download=True, transform=transforms.Compose(to_compose))
+    train_ds_index = dataset_index('./data', train=True, download=True, transform=train_transforms)
+    test_ds_index = dataset_index('./data', train=False, download=True, transform=test_transforms)
     train_ds_index.targets = torch.tensor(np.array(train_ds_index.targets))
     test_ds_index.targets = torch.tensor(np.array(test_ds_index.targets))
 
@@ -57,9 +65,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         break
 
     train_loader_default = torch.utils.data.DataLoader(
-        dataset('./data', train=True, download=True, transform=transforms.Compose(
-            to_compose
-            )),
+        dataset('./data', train=True, download=True, transform=train_transforms),
         batch_size=batch_size, shuffle=False)
     for data in train_loader_default:
         train_X = data[0].cuda()
@@ -70,10 +76,8 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=10, shuffle=True)
 
     train_loader_mini = torch.utils.data.DataLoader(
-        dataset('./data', train=True, download=True, transform=transforms.Compose(
-            to_compose
-            )),
-        batch_size=10, shuffle=True) #change to True?
+        dataset('./data', train=True, download=True, transform=train_transforms,
+        batch_size=10, shuffle=True)) #change to True?
 
     f = np.zeros((m, k))    
     
