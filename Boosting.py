@@ -107,10 +107,8 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         a = 0 # for memory debugging purposes
         
         # Get training acuracy of WL
-        a, predictions, b = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
+        _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
         wl_train_acc = (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions)
-        del a
-        del b
         ensemble.accuracies['wl_train'].append(wl_train_acc)
         print("Training accuracy of weak learner: ", wl_train_acc)
         
