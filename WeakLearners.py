@@ -48,7 +48,7 @@ class WongNeuralNetMNIST(BaseNeuralNet):
         lr_schedule = lambda t: np.interp([t], [0, epochs * 2//5, epochs], [0, lr_max, 0])[0]
         currSamples = 0
         
-        print(f"adv_train: {adv_train}")
+#         print(f"adv_train: {adv_train}")
 
         # test_set, val_set = torch.utils.data.random_split(test_loader.dataset, [9000, 1000])
         for epoch in range(epochs):
@@ -118,7 +118,7 @@ class WongNeuralNetMNIST(BaseNeuralNet):
         return loss
 
     def batchUpdate_phase3(self, X, y, C, alpha = 0.375):
-        print("starting batchUpdate")
+#         print("starting batchUpdate")
         epsilon = self.train_eps
         def cross_entropy(pred, soft_targets):
             logsoftmax = nn.LogSoftmax()
@@ -137,7 +137,7 @@ class WongNeuralNetMNIST(BaseNeuralNet):
         optimizer.zero_grad()
         # compute k_i's that need work (per example)
         worst_k = np.argmax(C, axis = 1)
-        print("In Batch Update worst_k.shape: ", worst_k.shape)
+#         print("In Batch Update worst_k.shape: ", worst_k.shape)
         # compute L(x_i, k_i) for all examples
         delta = torch.zeros_like(X).uniform_(-epsilon, epsilon).cuda()
         delta.requires_grad = True
@@ -264,7 +264,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         elif lr_schedule == 'multistep':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[lr_steps / 2, lr_steps * 3 / 4], gamma=0.1)
 
-        print("adv_train:", adv_train)
+#         print("adv_train:", adv_train)
         # Training
         prev_robust_acc = 0.
         start_train_time = time.time()
@@ -282,7 +282,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                     break
                 X, y = data[0].cuda(), data[1].cuda()
                 if i % 100 == 99:
-                    print("about to record accs", val_attacks)
+#                     print("about to record accs", val_attacks)
                     self.record_accuracies(currSamples, train_X = X, train_y = y, val_X=val_X, val_y=val_y , val_attacks=val_attacks)
                     
                 if i == 0:

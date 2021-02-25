@@ -68,3 +68,8 @@ for each experiment and use a prefix)
     
 # Jan 26 2021
 - Hypothesis: correlation between the amount the ensemble's acc increases as we add weak learners and the distance between train and val for each weak learner
+
+# Feb 9
+- Looks like boosting with 2 WL increases the accuracy pretty fast but not much after that
+- It seems that the ensemble will beat the regularly trained nerual networks by a few percent each time.
+- We are decaying the alpha value to see if we can close the test train gap for ensemble.

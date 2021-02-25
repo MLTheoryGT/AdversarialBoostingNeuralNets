@@ -12,6 +12,7 @@ import torch.cuda as cutorch
 import gc
 import sys
 from utils import cifar10_mean, cifar10_std
+from datetime import datetime
 
 def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200):
     def dataset_with_indices(cls):
@@ -73,6 +74,9 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     train_loader_default = torch.utils.data.DataLoader(
         dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms)),
         batch_size=batch_size, shuffle=False)
+    test_loader_default = torch.utils.data.DataLoader(
+        dataset('./data', train=False, download=True, transform=transforms.Compose(train_transforms)),
+        batch_size=batch_size, shuffle=False)
     for data in train_loader_default:
         train_X = data[0].cuda()
         train_y = data[1].cuda()
@@ -89,6 +93,8 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     
     print("attack eps ens", attack_eps_ensemble)
     ensemble = Ensemble(weakLearners=[], weakLearnerType=weakLearnerType, attack_eps=attack_eps_ensemble)
+    
+    start = datetime.now()
     
     def gcLoop():
         print("-"*100)
@@ -112,9 +118,16 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         h_i.fit(train_loader, test_loader, C_t, adv_train=adv_train, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
         a = 0 # for memory debugging purposes
         
-        # Get training acuracy of WL
+        # Get training and test acuracy of WL
+        _, predictions, _ = pytorch_predict(h_i.model, test_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
+        wl_test_acc = (predictions == test_ds_index.targets.numpy()).astype(int).sum()/len(predictions)
+        
+        ensemble.accuracies['wl_val'].append(wl_test_acc)
+        print("Test accuracy of weak learner: ", wl_test_acc)
+        
         _, predictions, _ = pytorch_predict(h_i.model, train_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
         wl_train_acc = (predictions == train_ds_index.targets.numpy()).astype(int).sum()/len(predictions)
+        
         ensemble.accuracies['wl_train'].append(wl_train_acc)
         print("Training accuracy of weak learner: ", wl_train_acc)
         
@@ -123,7 +136,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         b = fexp.sum()
         delta_t = a / b
         alpha = 1/2*np.log((1+delta_t)/(1-delta_t))
-#         alpha /= 2 (Seeing if val accuracy improves if I decay the alpha parameter)
+#         alpha /= 2 #(Seeing if val accuracy improves if I decay the alpha parameter)
         print("Alpha: ", alpha)
         f[np.arange(m), predictions] += alpha
         
@@ -141,9 +154,10 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         torch.cuda.empty_cache()
         ensemble.addWeakLearner(model_path, alpha)
                 
-        print("t: ", t, "memory allocated:", cutorch.memory_allocated(0))    
+        print("t: ", t, "memory allocated:", cutorch.memory_allocated(0))   
+        print("After WL ", t, " time elapsed(s): ", (datetime.now() - start).seconds)
 #         ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
-        ensemble.record_accuracies(t, train_loader_mini, test_loader_mini, 200, 200, val_attacks=val_attacks)
+        ensemble.record_accuracies(t, train_loader_mini, test_loader_mini, 1000, 1000, val_attacks=val_attacks)
         a = 0 # for memory-debugging
         
     #end of gc loop
@@ -151,19 +165,10 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         Args:
             maxSamples: either None or a list for each wl
     """
-    cnt = 0
-    for t, maxSample in enumerate(maxSamples):
-        cnt += 1
-    print("cnt: ", cnt)
 
-    cnt2 = 0
     for t, maxSample in enumerate(maxSamples):
-        print("t:", t)
-        cnt2 += 1
-        print("cnt2:", cnt2)
         gcLoop()
         gc.collect()
-    print("cnt2 at the end:", cnt2)
         
     return ensemble
 
@@ -173,23 +178,26 @@ class Ensemble(MetricPlotter, Validator):
     def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10, attack_eps=[]):
         """
         """
-        print("weakLearners before super call:", weakLearners)
+#         print("weakLearners before super call:", weakLearners)
         MetricPlotter.__init__(self, 'Number of weak learners')
         Validator.__init__(self)
-        print("weakLearners after super call:", weakLearners)
+#         print("weakLearners after super call:", weakLearners)
         self.weakLearners = weakLearners
         self.weakLearnerWeights = weakLearnerWeights
         self.weakLearnerType = weakLearnerType
         self.accuracies['wl_train'] = []
+        self.accuracies['wl_val'] = []
         self.attack_eps = attack_eps
         assert len(self.weakLearners) == 0
 
-    def plot_wl_train_acc(self, path=None):
+    def plot_wl_acc(self, path=None):
         plt.subplots()
         plt.plot(self.train_checkpoints, self.accuracies['wl_train'])
+        plt.plot(self.train_checkpoints, self.accuracies['wl_val'])
+        plt.legend(['Train accuracy', 'Val accuracy'])
         plt.xlabel(self.xlabel)
-        plt.ylabel('Weak learner train accuracy')
-        plt.title('Weak learner train accuracy')
+        plt.ylabel('Weak learner accuracy')
+        plt.title('Weak learner accuracy')
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -199,7 +207,7 @@ class Ensemble(MetricPlotter, Validator):
         self.weakLearnerWeights.append(weakLearnerWeight)
     
     def getSingleWLPrediction(self, i, wLPredictions, X):
-        print("memory allocated:", cutorch.memory_allocated(0), "for WL num ", i)
+#         print("memory allocated:", cutorch.memory_allocated(0), "for WL num ", i)
         if not isinstance(self.weakLearners[i], str):
             learner = self.weakLearners[i]
         else:
@@ -214,7 +222,7 @@ class Ensemble(MetricPlotter, Validator):
             
     def getWLPredictions(self, X, k):
         T = len(self.weakLearners)
-        print("total num weak learners:", T)
+#         print("total num weak learners:", T)
 #         print("Start WL Pred memory allocated:", cutorch.memory_allocated(0)) 
         wLPredictions = torch.zeros((X.shape[0], k, T)).cuda()
 
@@ -224,7 +232,7 @@ class Ensemble(MetricPlotter, Validator):
         
         torch.cuda.empty_cache()
         
-        print("Finishing WL pred memory allocated:", cutorch.memory_allocated(0))
+#         print("Finishing WL pred memory allocated:", cutorch.memory_allocated(0))
         return wLPredictions
 
     def predict(self, X):
@@ -256,8 +264,8 @@ class Ensemble(MetricPlotter, Validator):
         wLPredictions = self.getWLPredictions(X, k)
         weights = torch.tensor(self.weakLearnerWeights).unsqueeze(1).float().cuda()
         assert(wLPredictions.shape == (len(X), k, T))
-        print("weights shape:", weights.shape)
-        print("T:", T)
+#         print("weights shape:", weights.shape)
+#         print("T:", T)
         assert(weights.shape == (T, 1))
         output = torch.matmul(wLPredictions, weights).squeeze(2)
         del wLPredictions

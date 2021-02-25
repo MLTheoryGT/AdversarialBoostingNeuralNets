@@ -260,7 +260,7 @@ class Validator():
 #         print("self.attack_eps", self.attack_eps)
         # TODO: modify the below block when I want to also test PGD
         for attack in val_attacks:
-            print("about to attack",attack)
+#             print("about to attack",attack)
             losses[attack] = []
             accuracies[attack] = []
 
@@ -308,10 +308,10 @@ class Validator():
         if val_X is not None and val_y is not None:
             self.val_checkpoints.append(progress)
             losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks)
-            print("losses, accs", losses, accuracies)
+#             print("losses, accs", losses, accuracies)
             self.losses['val'].append(losses['val'])
             self.accuracies['val'].append(accuracies['val'])
-            print("Val accuracy:", accuracies['val'])
+#             print("Val accuracy:", accuracies['val'])
 #             print("losses", losses)
 #             print("self.losses", self.losses)
             for attack in losses:
