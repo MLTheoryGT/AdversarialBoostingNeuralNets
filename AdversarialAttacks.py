@@ -15,7 +15,7 @@ def attack_fgsm(X, y, epsilon, model):
     return ans
 
 
-def attack_pgd(X, y, epsilon, model, alpha, attack_iters, restarts):
+def attack_pgd(X, y, epsilon, model, alpha, attack_iters=5, restarts=1):
     max_loss = torch.zeros(y.shape[0]).cuda()
     max_delta = torch.zeros_like(X).cuda()
     for _ in range(restarts):
