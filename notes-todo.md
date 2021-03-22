@@ -73,3 +73,14 @@ for each experiment and use a prefix)
 - Looks like boosting with 2 WL increases the accuracy pretty fast but not much after that
 - It seems that the ensemble will beat the regularly trained nerual networks by a few percent each time.
 - We are decaying the alpha value to see if we can close the test train gap for ensemble.
+
+
+# Mar 15
+- Currently retesting ensemble on eps [0.01, 0.02, 0.03] on fgsm to compare to attacks on weak learners (larger epsilons don't make sense)
+    * Will tell us if the results for the non-adversarial case hold for the adversarial case
+    * Should see if they hold for PGD
+- Change the ensemble.plot_adv or whatev to make sure it can handle multiple attacks at once
+
+# Mar 17
+- Perhaps our ensemble should always take the peak of each WL rather than just the most current version of the WL
+- Currently testing the nonadversarially trained ensemble on [0.01, 0.02, 0.03] to see if that outperforms adversarial ensemble interestingly.
