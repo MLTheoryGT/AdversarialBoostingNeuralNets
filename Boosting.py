@@ -17,7 +17,7 @@ from Ensemble import Ensemble
 import csv
 import os
 
-def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train=False, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200, val_flag=True):
+def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train_prefix=0, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200, val_flag=True):
     def dataset_with_indices(cls):
         """
         Modifies the given Dataset class to return a tuple data, target, index
@@ -125,7 +125,10 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         # Fit WL on weighted subset of data
         h_i = weakLearnerType(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
         
-        h_i.fit(train_loader, test_loader, C_t, adv_train=adv_train, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
+        if t < adv_train_prefix:
+            h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
+        else:
+            h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
         a = 0 # for memory debugging purposes
         
         # Get training and test acuracy of WL
@@ -250,7 +253,7 @@ class BoostingSampler(Sampler):
     def setC(self, C):
         self.C = C
 
-def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10, adv_train=False, val_attacks=[],
+def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10, adv_train_prefix=0, val_attacks=[],
                attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3, batch_size=200, val_flag=True):
     
 #     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
@@ -270,7 +273,7 @@ def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=Won
 
     t0 = datetime.now()
 
-    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train=adv_train, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size, val_flag=val_flag)
+    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train_prefix=adv_train_prefix, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size, val_flag=val_flag)
 
     print("Finished in", (datetime.now()-t0).total_seconds(), " s")
     

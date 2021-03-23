@@ -84,3 +84,9 @@ for each experiment and use a prefix)
 # Mar 17
 - Perhaps our ensemble should always take the peak of each WL rather than just the most current version of the WL
 - Currently testing the nonadversarially trained ensemble on [0.01, 0.02, 0.03] to see if that outperforms adversarial ensemble interestingly.
+
+# Mar 22
+- The results show us that ensembling the non-adversarial nets still increases their accuracy, but not always more than the adversarially trained nets.
+- main insight: the non-adversarial nets increase accuracy more monotonically than adv
+- IDEA: make an ensemble which starts out with some adversarially trained nets then goes to non adv nets
+- to hit neurips deadline we should start implementing shafahi and regular pgd training

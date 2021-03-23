@@ -234,7 +234,7 @@ class Validator():
         # Must be implemented by classes that inherit Validator
         pass
     
-    def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha = 1e-2, attack_iters = 50, restarts = 10, y_pred=None):
+    def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha=1e-2, attack_iters=5, restarts=1, y_pred=None):
 #         print("in validation")
         
         losses = {} # (non_adv, adv)
