@@ -234,7 +234,7 @@ class Validator():
         # Must be implemented by classes that inherit Validator
         pass
     
-    def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha=1e-2, attack_iters=5, restarts=1, y_pred=None):
+    def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha=1e-2, attack_iters=20, restarts=1, y_pred=None):
 #         print("in validation")
         
         losses = {} # (non_adv, adv)
@@ -276,6 +276,7 @@ class Validator():
                 X_adv = X + delta
                 y_pred = self.predict(X_adv).detach()
                 accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
+                print("acc: ", accuracy)
                 loss = F.cross_entropy(y_pred, y)
                 losses[attack].append(loss.item())
                 accuracies[attack].append(accuracy)

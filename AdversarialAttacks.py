@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from utils import std, upper_limit, lower_limit
+import matplotlib.pyplot as plt
 
 # taken from https://github.com/locuslab/fast_adversarial/blob/master/MNIST/evaluate_mnist.py
 def attack_fgsm(X, y, epsilon, model):
@@ -41,8 +42,8 @@ def attack_pgd_mnist(X, y, epsilon, model, alpha, attack_iters=5, restarts=1):
         max_loss = torch.max(max_loss, all_loss)
     return max_delta
 
-def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=5, restarts=1):
-#     print("pgd called with eps=", epsilon)
+def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, restarts=1):
+    print("pgd called with", epsilon, alpha, attack_iters, restarts)
     epsilon = torch.tensor([[[epsilon]], [[epsilon]], [[epsilon]]]).cuda()
     max_loss = torch.zeros(y.shape[0]).cuda()
     max_delta = torch.zeros_like(X).cuda()
@@ -70,6 +71,12 @@ def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=5, resta
         all_loss = F.cross_entropy(model(X+delta), y, reduction='none').detach()
         max_delta[all_loss >= max_loss] = delta.detach()[all_loss >= max_loss]
         max_loss = torch.max(max_loss, all_loss)
+        
+    
+    flatDelta = torch.flatten(max_delta).squeeze().cpu().numpy()
+    print(flatDelta)
+    plt.hist(flatDelta)
+    plt.show()
     return max_delta
 
 def clamp(X, lower_limit, upper_limit):

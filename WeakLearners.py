@@ -369,26 +369,112 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         loss = criterion(output, y)
         return loss
 
-    def batchUpdateNonAdv(X, y):
-        self.model.train()
-        N = X.size()[0]
-        
-        optimizer = self.optimizer
-
-        # Prints
-        # print("In Batch Update Y.shape: ", y.shape)
-
-        # compute delta (perturbation parameter)
-        optimizer.zero_grad()
-
-        # update network parameters
-        output = self.model(X)
-        loss = F.cross_entropy(output, y)
-        self.loss = loss
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-
     def predict(self, X):
         return self.model(X)
+    
+# class FreeNeuralNetCIFAR10(BaseNeuralNet):
+#     def __init__(self, attack_eps = [], train_eps=8):
+#         super().__init__(PreActResNet18)
+#         self.train_eps = train_eps
+#         self.attack_eps = attack_eps
+    
+#     '''
+#     Arguments for fit:
+#     parser.add_argument('--batch-size', default=128, type=int)
+#     parser.add_argument('--data-dir', default='../../cifar-data', type=str)
+#     parser.add_argument('--epochs', default=10, type=int, help='Total number of epochs will be this argument * number of minibatch replays.')
+#     parser.add_argument('--lr-schedule', default='cyclic', type=str, choices=['cyclic', 'multistep'])
+#     parser.add_argument('--lr-min', default=0., type=float)
+#     parser.add_argument('--lr-max', default=0.04, type=float)
+#     parser.add_argument('--weight-decay', default=5e-4, type=float)
+#     parser.add_argument('--momentum', default=0.9, type=float)
+#     parser.add_argument('--epsilon', default=8, type=int)
+#     parser.add_argument('--minibatch-replays', default=8, type=int)
+#     parser.add_argument('--out-dir', default='train_free_output', type=str, help='Output directory')
+#     parser.add_argument('--seed', default=0, type=int)
+#     parser.add_argument('--opt-level', default='O2', type=str, choices=['O0', 'O1', 'O2'],
+#         help='O0 is FP32 training, O1 is Mixed Precision, and O2 is "Almost FP16" Mixed Precision')
+#     parser.add_argument('--loss-scale', default='1.0', type=str, choices=['1.0', 'dynamic'],
+#         help='If loss_scale is "dynamic", adaptively adjust the loss scale over time')
+#     parser.add_argument('--master-weights', action='store_true',
+#         help='Maintain FP32 master weights to accompany any FP16 model weights, not applicable for O1 opt level')
+#     '''
+#     def fit(self, train_loader, test_loader, epochs=100, lr_schedule=cyclic, lr_min=0, lr_max=0.04,
+#             weight_decay=5e-4, momentum=0.9, minibatch_replays=8, seed=0, opt_level='O2', loss_scale=1.0,
+#             master_weights=True,
+#             maxSample = None, adv_train=False, val_attacks = [], predictionWeights=None):
+        
+#         np.random.seed(seed)
+#         torch.manual_seed(seed)
+#         torch.cuda.manual_seed(seed)
+        
+        
+#         epsilon = (self.train_eps / 255.) / std
+        
+#         model = self.model
+#         model.train()
+        
+#         opt = torch.optim.SGD(model.parameters(), lr=lr_max, momentum=momentum, weight_decay=weight_decay)
+#         criterion = nn.CrossEntropyLoss()
+        
+#         delta = torch.zeros(train_loader.batch_size, 3, 32, 32).cuda()
+#         delta.requires_grad = True
+        
+#         lr_steps = epochs * len(train_loader) * minibatch_replays
+#         if lr_schedule == 'cyclic':
+#             scheduler = torch.optim.lr_scheduler.CyclicLR(opt, base_lr=lr_min, max_lr=lr_max,
+#                 step_size_up=lr_steps / 2, step_size_down=lr_steps / 2)
+#         elif lr_schedule == 'multistep':
+#             scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[lr_steps / 2, lr_steps * 3 / 4], gamma=0.1)
+            
+#         # Training
+#         start_train_time = time.time()
+# #         logger.info('Epoch \t Seconds \t LR \t \t Train Loss \t Train Acc')
+#         for epoch in range(epochs):
+#             start_epoch_time = time.time()
+#             train_loss = 0
+#             train_acc = 0
+#             train_n = 0
+#             for i, (X, y) in enumerate(train_loader):
+#                 X, y = X.cuda(), y.cuda()
+#                 for _ in range(minibatch_replays):
+#                     if adv_train:
+#                         loss = self.batchUpdate(X, y)
+#                     else:
+#                         loss = self.batchUpdateNonAdv(X, y)
+#                 train_loss += loss.item() * y.size(0)
+#                 train_acc += (output.max(1)[1] == y).sum().item()
+#                 train_n += y.size(0)
+#             epoch_time = time.time()
+#             lr = scheduler.get_lr()[0]
+#             logger.info('%d \t %.1f \t \t %.4f \t %.4f \t %.4f',
+#                 epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n)
+#         train_time = time.time()
+# #         torch.save(model.state_dict(), os.path.join(out_dir, 'model.pth'))
+# #         logger.info('Total train time: %.4f minutes', (train_time - start_train_time)/60)
+            
+#         def batchUpdate(self, X, y):
+#             # TODO
+#             with torch.cuda.amp.autocast():
+#                 output = model(X + delta[:X.size(0)])
+#                 loss = criterion(output, y)
+#             scaler = torch.cuda.amp.GradScaler()
+#             opt.zero_grad()
+#             scaler.scale(loss).backward()
+#             with amp.scale_loss(loss, opt) as scaled_loss:
+#                 scaled_loss.backward()
+#             grad = delta.grad.detach()
+#             delta.data = clamp(delta + epsilon * torch.sign(grad), -epsilon, epsilon)
+#             delta.data[:X.size(0)] = clamp(delta[:X.size(0)], lower_limit - X, upper_limit - X)
+#             opt.step()
+#             delta.grad.zero_()
+#             scheduler.step()
+            
+#         def batchUpdateNonAdv(self, X, y):
+#             output = model(X)
+#             criterion = nn.CrossEntropyLoss()
+#             loss = criterion(output, y)
+#             return loss
+#         def predict(self, X):
+#             return self.model(X)
+        
