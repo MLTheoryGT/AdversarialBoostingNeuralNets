@@ -199,22 +199,22 @@ class Ensemble(MetricPlotter, Validator):
     def record_accuracies(self, progress, train_loader, test_loader, numsamples_train, numsamples_val, val_attacks=[], attack_iters=20):
         
         # record train
-        
-        train_batch_size = train_loader.batch_size
-        self.train_checkpoints.append(progress)
-        # sum losses
-        # average accuracies
-        curSample = 0
-        train_loss_dicts = []
-        train_acc_dicts = []
-        for i, data in enumerate(train_loader):
-            curSample += train_batch_size
-            if curSample >= numsamples_train: break
-            losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='train')
-            train_loss_dicts.append(losses)
-            train_acc_dicts.append(accuracies)
-        self.losses['train'].append(self.get_sum(train_loss_dicts)['train'])
-        self.accuracies['train'].append(self.get_mean(train_acc_dicts)['train'])
+        if numsamples_train >0:
+            train_batch_size = train_loader.batch_size
+            self.train_checkpoints.append(progress)
+            # sum losses
+            # average accuracies
+            curSample = 0
+            train_loss_dicts = []
+            train_acc_dicts = []
+            for i, data in enumerate(train_loader):
+                curSample += train_batch_size
+                if curSample >= numsamples_train: break
+                losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='train')
+                train_loss_dicts.append(losses)
+                train_acc_dicts.append(accuracies)
+            self.losses['train'].append(self.get_sum(train_loss_dicts)['train'])
+            self.accuracies['train'].append(self.get_mean(train_acc_dicts)['train'])
         
         # record val / adversarial
         

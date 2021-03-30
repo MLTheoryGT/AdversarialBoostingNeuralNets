@@ -276,7 +276,7 @@ class Validator():
                 X_adv = X + delta
                 y_pred = self.predict(X_adv).detach()
                 accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
-                print("acc: ", accuracy)
+#                 print("acc: ", accuracy)
                 loss = F.cross_entropy(y_pred, y)
                 losses[attack].append(loss.item())
                 accuracies[attack].append(accuracy)

@@ -74,9 +74,10 @@ def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, rest
         
     
     flatDelta = torch.flatten(max_delta).squeeze().cpu().numpy()
-    print(flatDelta)
-    plt.hist(flatDelta)
-    plt.show()
+# uncomment if i want delta to be printed out
+#     print(flatDelta)
+#     plt.hist(flatDelta)
+#     plt.show()
     return max_delta
 
 def clamp(X, lower_limit, upper_limit):

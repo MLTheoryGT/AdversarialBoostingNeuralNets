@@ -56,10 +56,10 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     
     #mini loaders for ensemble
     # @Arvind, I think you may be able to change the batch size here
-    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=10, shuffle=True)
+    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=100, shuffle=True)
     train_loader_mini = torch.utils.data.DataLoader(
         dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms)),
-        batch_size=10, shuffle=True) #change to True?
+        batch_size=100, shuffle=True) #change to True?
     
     
     wl = []
@@ -82,9 +82,10 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
 #         ensemble.addWeakLearner(wl[i], 1)
 #         print("before ens acc", ensemble.accuracies)
         
+#         if i == 3:
         ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train, numsamples_val, val_attacks=attacks, attack_iters=attack_iters)
         print("ensemble accuracies:", ensemble.accuracies)
-    
+
     return ensemble
         
     
