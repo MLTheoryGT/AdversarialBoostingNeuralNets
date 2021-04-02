@@ -14,10 +14,11 @@ import sys
 from utils import cifar10_mean, cifar10_std
 from datetime import datetime
 from Ensemble import Ensemble
+from AdversarialAttacks import attack_fgsm, attack_pgd
 import csv
 import os
 
-def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.3, adv_train_prefix=0, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200, val_flag=True):
+def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.127, adv_train_prefix=0, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200, val_flag=True):
     def dataset_with_indices(cls):
         """
         Modifies the given Dataset class to return a tuple data, target, index
@@ -32,6 +33,9 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
             '__getitem__': __getitem__,
         })
     
+    print("attack_eps_nn: ", attack_eps_nn)
+    print("attack_eps_ensemble: ", attack_eps_ensemble)
+    print("train_eps_nn: ", train_eps_nn)
     if maxSamples is None:
         maxSamples = [500 for i in range(numLearners)]
     else:
@@ -151,7 +155,36 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         alpha = 1/2*np.log((1+delta_t)/(1-delta_t))
 #         alpha /= 2 #(Seeing if val accuracy improves if I decay the alpha parameter)
         print("Alpha: ", alpha)
-        f[np.arange(m), predictions] += alpha
+    
+        # enumerate dataloader
+        # delta = fgsm(X, y, model)
+        # update f one match at a time via f[np.arange(batchsize)]
+        advBatchSize = train_loader_default.batch_size
+        for advCounter, data in enumerate(train_loader_default):
+            X = data[0].cuda()
+            y = data[1].cuda()
+#             print("train_eps_nn: ", train_eps_nn)
+#             delta = attack_fgsm(X, y, attack_eps_nn[0], h_i.predict)
+            delta = attack_pgd(X, y, attack_eps_nn[0], h_i.predict)
+            
+            
+#             print("delta max: ", delta.max())
+#             print("delta min: ", delta.min())
+#             flatDelta = torch.flatten(max_delta).squeeze().cpu().numpy()
+            # uncomment if i want delta to be printed out
+#             print(flatDelta)
+#             plt.hist(flatDelta)
+#             plt.show()
+            regPred = h_i.predict(X).argmax(axis=1)
+#             print("regPred shape: ", regPred.shape)
+#             print("y shape: ", y.shape)
+            predictions = h_i.predict(X + delta).argmax(axis=1)
+            print("RegularAcc: ", (regPred==y).int().sum()/y.shape[0])
+            print("AdvAcc: ", (predictions==y).int().sum()/y.shape[0])
+#             print(predictions)
+#             print(h_i.predict(X))
+            indices = predictions.detach().int().cpu().numpy()
+            f[np.arange(advCounter*advBatchSize, (advCounter + 1)*advBatchSize), indices] += alpha
         
         # save WL model and alpha
         path_name = 'mnist' if dataset==datasets.MNIST else 'cifar10'

@@ -272,7 +272,7 @@ class Validator():
                     delta = attack_fgsm(X, y, epsilon, self.predict)
                 else:
                     # assuming attack == attack_pgd
-                    delta = attack_pgd(X, y, epsilon, self.predict, alpha, attack_iters, restarts)
+                    delta = attack_pgd(X, y, epsilon, self.predict, attack_iters=attack_iters, restarts=restarts)
                 X_adv = X + delta
                 y_pred = self.predict(X_adv).detach()
                 accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
