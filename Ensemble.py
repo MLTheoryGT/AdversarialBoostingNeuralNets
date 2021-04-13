@@ -110,6 +110,7 @@ class Ensemble(MetricPlotter, Validator):
         T = len(self.weakLearners)
         
         wLPredictions = self.getWLPredictions(X, k)
+#         print(wlPre)
         weights = torch.tensor(self.weakLearnerWeights).unsqueeze(1).float().cuda()
         assert(wLPredictions.shape == (len(X), k, T))
 #         print("weights shape:", weights.shape)

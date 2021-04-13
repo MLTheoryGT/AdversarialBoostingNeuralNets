@@ -96,7 +96,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms)),
         batch_size=10, shuffle=True) #change to True?
 
-    f = np.zeros((m, k))    
+    f = np.zeros((m, k))
     
     print("attack eps ens", attack_eps_ensemble)
     ensemble = Ensemble(weakLearners=[], weakLearnerType=weakLearnerType, attack_eps=attack_eps_ensemble)
@@ -133,7 +133,6 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
             h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
         else:
             h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
-        a = 0 # for memory debugging purposes
         
         # Get training and test acuracy of WL
         _, predictions, _ = pytorch_predict(h_i.model, test_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
@@ -148,26 +147,20 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         ensemble.accuracies['wl_train'].append(wl_train_acc)
         print("Training accuracy of weak learner: ", wl_train_acc)
         
-        # Get alpha for this weak learners
-        a = -C_t[np.arange(m), predictions].sum()
-        b = fexp.sum()
-        delta_t = a / b
-        alpha = 1/2*np.log((1+delta_t)/(1-delta_t))
-#         alpha /= 2 #(Seeing if val accuracy improves if I decay the alpha parameter)
-        print("Alpha: ", alpha)
     
         # enumerate dataloader
         # delta = fgsm(X, y, model)
         # update f one match at a time via f[np.arange(batchsize)]
         advBatchSize = train_loader_default.batch_size
+        a = 0
+        allIndices = np.zeros(m)
         for advCounter, data in enumerate(train_loader_default):
             X = data[0].cuda()
             y = data[1].cuda()
 #             print("train_eps_nn: ", train_eps_nn)
 #             delta = attack_fgsm(X, y, attack_eps_nn[0], h_i.predict)
             delta = attack_pgd(X, y, attack_eps_nn[0], h_i.predict)
-            
-            
+        
 #             print("delta max: ", delta.max())
 #             print("delta min: ", delta.min())
 #             flatDelta = torch.flatten(max_delta).squeeze().cpu().numpy()
@@ -175,17 +168,32 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
 #             print(flatDelta)
 #             plt.hist(flatDelta)
 #             plt.show()
-            regPred = h_i.predict(X).argmax(axis=1)
+#             regPred = h_i.predict(X).argmax(axis=1)
 #             print("regPred shape: ", regPred.shape)
 #             print("y shape: ", y.shape)
             predictions = h_i.predict(X + delta).argmax(axis=1)
-            print("RegularAcc: ", (regPred==y).int().sum()/y.shape[0])
-            print("AdvAcc: ", (predictions==y).int().sum()/y.shape[0])
+#             print("RegularAcc: ", (regPred==y).int().sum()/y.shape[0])
+#             print("AdvAcc: ", (predictions==y).int().sum()/y.shape[0])
 #             print(predictions)
 #             print(h_i.predict(X))
             indices = predictions.detach().int().cpu().numpy()
-            f[np.arange(advCounter*advBatchSize, (advCounter + 1)*advBatchSize), indices] += alpha
+            allIndices[np.arange(advCounter*advBatchSize, (advCounter + 1)*advBatchSize)] = indices
         
+
+        
+        # Get alpha for this weak learners
+#         a = -C_t[np.arange(m), predictions].sum()
+        a = -C_t[np.arange(m), allIndices.astype(int)].sum()
+        b = fexp.sum()
+        delta_t = a / b
+        alpha = 1/2*np.log((1+delta_t)/(1-delta_t))
+#         alpha /= 2 #(Seeing if val accuracy improves if I decay the alpha parameter)
+        print("Alpha: ", alpha)
+        
+        # targetIndices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        #                 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        f[np.arange(m), allIndices.astype(int)] += alpha
+    
         # save WL model and alpha
         path_name = 'mnist' if dataset==datasets.MNIST else 'cifar10'
         
@@ -206,7 +214,6 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
 #         ensemble.record_accuracies(t, val_X=val_X, val_y=val_y, train_X=train_X, train_y=train_y, val_attacks=val_attacks)
         if val_flag:
             ensemble.record_accuracies(t, train_loader_mini, test_loader_mini, 1000, 1000, val_attacks=val_attacks)
-        a = 0 # for memory-debugging
     
 
     

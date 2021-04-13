@@ -42,8 +42,11 @@ def attack_pgd_mnist(X, y, epsilon, model, alpha, attack_iters=5, restarts=1):
         max_loss = torch.max(max_loss, all_loss)
     return max_delta
 
-def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, restarts=1):
+def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, restarts=7):
 #     print("pgd called with", epsilon, alpha, attack_iters, restarts)
+#     alpha = alpha * 100
+#     print(alpha)
+#     print("x30")
     epsilon = torch.tensor([[[epsilon]], [[epsilon]], [[epsilon]]]).cuda()
     max_loss = torch.zeros(y.shape[0]).cuda()
     max_delta = torch.zeros_like(X).cuda()
@@ -56,6 +59,9 @@ def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, rest
         for attackIter in range(attack_iters):
 #             print("attackIter: ", attackIter)
             output = model(X + delta)
+#             print(output[0:10])
+#             output = output * 30
+#             output = torch.nn.functional.softmax(output)
             index = torch.where(output.max(1)[1] == y)
             if len(index[0]) == 0:
                 break

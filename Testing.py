@@ -76,10 +76,11 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     
     startTime = datetime.now()
     ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10, attack_eps=attack_eps_ensemble)
+    weights = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8]
     for i in range(numWL):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
-        ensemble.addWeakLearner(wl[i], wlWeights[i])
-#         ensemble.addWeakLearner(wl[i], 1)
+#         ensemble.addWeakLearner(wl[i], wlWeights[i])
+        ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)
         
 #         if i == 3:
