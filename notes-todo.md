@@ -90,3 +90,9 @@ for each experiment and use a prefix)
 - main insight: the non-adversarial nets increase accuracy more monotonically than adv
 - IDEA: make an ensemble which starts out with some adversarially trained nets then goes to non adv nets
 - to hit neurips deadline we should start implementing shafahi and regular pgd training
+
+# April 13
+- Notes from meeting: more random restarts (instead of just 1), smaller architecture for weak learners
+- Schapire update: Use targeted attacks, or treat a perturbation to an incorrect label as a perturbation to all other labels (pessimistc approach)
+- Testing the model w/ pgd and more random restarts
+- Wrote code for the pessimistic approach, and wrote a unit test for it in testing_notebook.ipynb (to be run at a later time)
