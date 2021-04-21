@@ -122,6 +122,15 @@ class Ensemble(MetricPlotter, Validator):
         
         return output
     
+    def gradOptWeights(self, X):
+        # gradient optimize weights
+        # get ~100 adv examples
+        # calculate cross-entropy loss
+        # calc gradient with respect to weights
+    
+    def toggleGrad(self):
+        
+    
     
 #     def calc_adv_accuracy(self, dataset, num_batches = 15, train = False, attack_names = []):
 #         accuracies = {}

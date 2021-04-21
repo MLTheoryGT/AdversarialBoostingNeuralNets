@@ -42,7 +42,7 @@ def attack_pgd_mnist(X, y, epsilon, model, alpha, attack_iters=5, restarts=1):
         max_loss = torch.max(max_loss, all_loss)
     return max_delta
 
-def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, restarts=7):
+def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, restarts=1):
 #     print("pgd called with", epsilon, alpha, attack_iters, restarts)
 #     alpha = alpha * 100
 #     print(alpha)
