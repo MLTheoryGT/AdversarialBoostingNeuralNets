@@ -13,7 +13,7 @@ import numpy as np
     attacks: pass in functions
     numWL: int
 """
-def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_train=1000, numsamples_val=1000, attack_eps_ensemble = [0.03], attack_iters=20):
+def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_train=1000, numsamples_val=1000, attack_eps_ensemble = [0.03], attack_iters=20, gradOptWeights=False):
     train_transforms = []
     test_transforms = []
     
@@ -79,7 +79,9 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     weights = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8]
     for i in range(numWL):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
+#         ensemble.addWeakLearner(wl[i], wlWeights[i])
         ensemble.addWeakLearner(wl[i], wlWeights[i])
+        ensemble.gradOptWeights(train_loader_mini)
 #         ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)
         

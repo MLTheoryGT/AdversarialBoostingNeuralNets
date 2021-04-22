@@ -13,6 +13,7 @@ import gc
 import sys
 from utils import cifar10_mean, cifar10_std
 from datetime import datetime
+from AdversarialAttacks import attack_pgd
 
 class Ensemble(MetricPlotter, Validator):
     def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10, attack_eps=[]):
@@ -24,6 +25,7 @@ class Ensemble(MetricPlotter, Validator):
 #         print("weakLearners after super call:", weakLearners)
         self.weakLearners = weakLearners
         self.weakLearnerWeights = weakLearnerWeights
+        self.weakLearerWeightsTensor = torch.tensor(weakLearnerWeights, requires_grad=False).unsqueeze(1).float().cuda()
         self.weakLearnerType = weakLearnerType
         self.accuracies['wl_train'] = []
         self.accuracies['wl_val'] = []
@@ -38,6 +40,7 @@ class Ensemble(MetricPlotter, Validator):
         plt.xlabel(self.xlabel)
         plt.ylabel('Weak learner accuracy')
         plt.title('Weak learner accuracy')
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -45,6 +48,7 @@ class Ensemble(MetricPlotter, Validator):
     def addWeakLearner(self, weakLearner, weakLearnerWeight):
         self.weakLearners.append(weakLearner)
         self.weakLearnerWeights.append(weakLearnerWeight)
+        self.weakLearnerWeightsTensor = torch.tensor(self.weakLearnerWeights, requires_grad=False).unsqueeze(1).float().cuda()
     
     def getSingleWLPrediction(self, i, wLPredictions, X):
 #         print("memory allocated:", cutorch.memory_allocated(0), "for WL num ", i)
@@ -111,7 +115,7 @@ class Ensemble(MetricPlotter, Validator):
         
         wLPredictions = self.getWLPredictions(X, k)
 #         print(wlPre)
-        weights = torch.tensor(self.weakLearnerWeights).unsqueeze(1).float().cuda()
+        weights = self.weakLearnerWeightsTensor
         assert(wLPredictions.shape == (len(X), k, T))
 #         print("weights shape:", weights.shape)
 #         print("T:", T)
@@ -122,13 +126,36 @@ class Ensemble(MetricPlotter, Validator):
         
         return output
     
-    def gradOptWeights(self, X):
+    def gradOptWeights(self, train_loader, num_samples=1000, train_eps=0.127):
         # gradient optimize weights
         # get ~100 adv examples
         # calculate cross-entropy loss
         # calc gradient with respect to weights
+        print("weights before opt:", self.weakLearnerWeights)
+        print("tensor before opt:", self.weakLearnerWeightsTensor)
+        self.toggleWeightGrad(True)
+        optim = torch.optim.Adam([self.weakLearnerWeightsTensor])
+        total_samples = 0
+        for i, data in enumerate(train_loader):
+            X, y = data[0].cuda(), data[1].cuda()
+            X_adv = attack_pgd(X, y, train_eps, self.predict)
+            if total_samples > num_samples:
+                break;
+            total_samples += len(X)
+            output = self.predict(X)
+            optim.zero_grad()
+            loss = F.cross_entropy(output, y)
+            loss.backward()
+            optim.step()
+        self.toggleWeightGrad(False)
+        self.weakLearnerWeights = self.weakLearnerWeightsTensor.squeeze(1).tolist()
+        print("weights after opt:", self.weakLearnerWeights)
+        print("tensor after opt:", self.weakLearnerWeightsTensor)
+            
+
     
-    def toggleGrad(self):
+    def toggleWeightGrad(self, option=True):
+        self.weakLearnerWeightsTensor.requires_grad = option
         
     
     

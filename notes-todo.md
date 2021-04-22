@@ -96,3 +96,6 @@ for each experiment and use a prefix)
 - Schapire update: Use targeted attacks, or treat a perturbation to an incorrect label as a perturbation to all other labels (pessimistc approach)
 - Testing the model w/ pgd and more random restarts
 - Wrote code for the pessimistic approach, and wrote a unit test for it in testing_notebook.ipynb (to be run at a later time)
+
+# April 21
+- Working on MaxSamples = 75006 (gradient optimizing the weights at the end of ensemble training)

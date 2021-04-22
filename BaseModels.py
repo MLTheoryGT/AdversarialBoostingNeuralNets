@@ -145,6 +145,7 @@ class MetricPlotter():
         plt.xlabel(self.xlabel)
         plt.ylabel('Training loss')
         plt.title('Training loss')
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -155,6 +156,7 @@ class MetricPlotter():
         plt.xlabel(self.xlabel)
         plt.ylabel('Validation loss')
         plt.title('Validation loss')
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -165,6 +167,7 @@ class MetricPlotter():
         plt.xlabel(self.xlabel)
         plt.ylabel('Validation accuracy')
         plt.title('Validation accuracy')
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -175,6 +178,7 @@ class MetricPlotter():
         plt.xlabel(self.xlabel)
         plt.ylabel('Training accuracy')
         plt.title('Training accuracy')
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -187,6 +191,7 @@ class MetricPlotter():
         plt.ylabel("Accuracy")
         plt.legend(["Training accuracy", "Validation accuracy"])
         plt.title("Accuracy")
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -199,6 +204,7 @@ class MetricPlotter():
         plt.ylabel("Loss")
         plt.legend(["Training loss", "Validation loss"])
         plt.title("Loss")
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -217,6 +223,7 @@ class MetricPlotter():
                 plt.xlabel(self.xlabel)
                 plt.ylabel("Accuracy")
                 plt.title(f"Adversarial accuracy ({attack_name})")
+        plt.grid()
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -226,6 +233,7 @@ class MetricPlotter():
         plt.plot(self.iters, self.memory_usage)
         plt.xlabel(self.xlabel)
         plt.ylabel("Total memory usage")
+        plt.grid()
         plt.title("Memory usage over number of iterations")
 
 class Validator():
