@@ -80,7 +80,7 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     for i in range(numWL):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
 #         ensemble.addWeakLearner(wl[i], wlWeights[i])
-        ensemble.addWeakLearner(wl[i], wlWeights[i])
+        ensemble.addWeakLearner(wl[i], 1.0)
         ensemble.gradOptWeights(train_loader_mini)
 #         ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)

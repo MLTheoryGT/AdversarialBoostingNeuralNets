@@ -334,6 +334,7 @@ class Validator():
                         self.losses[attack.__name__][i].append(losses[attack][i])
                         self.accuracies[attack.__name__][i].append(accuracies[attack][i])
             print("Progress: %d,  val accuracy: %.4f" %(progress, self.accuracies['val'][-1]))
+            print("PGD accuracy:", self.accuracies['attack_pgd'])
     
     
 

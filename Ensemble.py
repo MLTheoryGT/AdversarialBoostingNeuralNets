@@ -134,7 +134,7 @@ class Ensemble(MetricPlotter, Validator):
         print("weights before opt:", self.weakLearnerWeights)
         print("tensor before opt:", self.weakLearnerWeightsTensor)
         self.toggleWeightGrad(True)
-        optim = torch.optim.Adam([self.weakLearnerWeightsTensor])
+        optim = torch.optim.Adam([self.weakLearnerWeightsTensor], lr=0.01)
         total_samples = 0
         for i, data in enumerate(train_loader):
             X, y = data[0].cuda(), data[1].cuda()
