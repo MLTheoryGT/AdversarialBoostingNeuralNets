@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import numpy as np
 import torch.cuda as cutorch
 cuda = torch.device('cuda:0')
-from datetime import datetime
 
 class Net(nn.Module):
     def __init__(self):
@@ -213,7 +212,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         self.train_eps = train_eps
         self.attack_eps = attack_eps
     
-    def fit(self, train_loader, test_loader, C=None, epochs=100, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
+    def fit(self, train_loader, test_loader, C=None, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
                   momentum=0.9, epsilon=8, alpha=10, delta_init="random", seed=0, opt_level="O2", loss_scale=1.0, out_dir="WongNNCifar10",
                   maxSample = None, adv_train=False, val_attacks = [], predictionWeights=None):
       
@@ -221,7 +220,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         attack_pgd, evaluate_pgd, evaluate_standard)
         import time
         
-        scaler = torch.cuda.amp.GradScaler()
+#         scaler = torch.cuda.amp.GradScaler()
 
         val_X = None
         val_y = None
@@ -248,7 +247,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         # print("memory usage after init model:", cutorch.memory_allocated(0))
 
         opt = torch.optim.SGD(model.parameters(), lr=lr_max, momentum=momentum, weight_decay=weight_decay)
-        amp_args = dict(opt_level=opt_level, loss_scale=loss_scale, verbosity=False)
+#         amp_args = dict(opt_level=opt_level, loss_scale=loss_scale, verbosity=False)
         # if opt_level == 'O2':
         #     amp_args['master_weights'] = master_weights
 #         model, opt = torch.cuda.amp.initialize(model, opt, **amp_args)
@@ -257,7 +256,10 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         if delta_init == 'previous':
             delta = torch.zeros(train_loader.batch_size, 3, 32, 32).cuda()
 
-        lr_steps = epochs * len(train_loader)
+        epoch_size = len(train_loader.dataset)
+        num_epochs = max(1, maxSample // epoch_size)
+        
+        lr_steps = num_epochs * len(train_loader)
         if lr_schedule == 'cyclic':
             scheduler = torch.optim.lr_scheduler.CyclicLR(opt, base_lr=lr_min, max_lr=lr_max,
                 step_size_up=lr_steps / 2, step_size_down=lr_steps / 2)
@@ -272,7 +274,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
         currSamples = 0
         done = False
         delta = None
-        for epoch in range(epochs):
+        for epoch in range(num_epochs):
             print("Epoch %d"%(epoch))
             start_epoch_time = time.time()
             for i, data in enumerate(train_loader):
@@ -298,9 +300,11 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
 #                 self.train_checkpoints.append(currSamples)
 
                 opt.zero_grad()
-                scaler.scale(loss).backward()
-                scaler.step(opt)
-                scaler.update()
+#                 scaler.scale(loss).backward()
+#                 scaler.step(opt)
+#                 scaler.update()
+                loss.backward()
+                opt.step()
                 scheduler.step()
                 del loss
                 del X
@@ -322,6 +326,7 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
                 # best_state_dict = copy.deepcopy(model.state_dict())
             epoch_time = time.time()
             lr = scheduler.get_lr()[0]
+            print("LR: ", lr)
             
             if done:
                 break
@@ -345,11 +350,12 @@ class WongNeuralNetCIFAR10(BaseNeuralNet):
             delta.data = clamp(delta, lower_limit - X, upper_limit - X)
 
         delta.requires_grad = True
-        with torch.cuda.amp.autocast():
-            output = self.model(X + delta[:X.size(0)])
-            loss = F.cross_entropy(output, y)
-        scaler = torch.cuda.amp.GradScaler()
-        scaler.scale(loss).backward()
+#         with torch.cuda.amp.autocast():
+        output = self.model(X + delta[:X.size(0)])
+        loss = F.cross_entropy(output, y)
+#         scaler = torch.cuda.amp.GradScaler()
+#         scaler.scale(loss).backward()
+        loss.backward()
 
         grad = delta.grad.detach()
         delta.data = clamp(delta + alpha * torch.sign(grad), -epsilon, epsilon)
