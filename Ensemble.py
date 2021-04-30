@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-from WeakLearners import WongNeuralNetCIFAR10, Net
+from WongBasedTraining import WongBasedTrainingCIFAR10
 from pytorch_memlab import LineProfiler 
 from BaseModels import MetricPlotter, Validator
 import torch.cuda as cutorch
@@ -16,7 +16,7 @@ from datetime import datetime
 from AdversarialAttacks import attack_pgd
 
 class Ensemble(MetricPlotter, Validator):
-    def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongNeuralNetCIFAR10, attack_eps=[]):
+    def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTrainingCIFAR10, attack_eps=[], model_base=PreActResNet18):
         """
         """
 #         print("weakLearners before super call:", weakLearners)
@@ -30,6 +30,8 @@ class Ensemble(MetricPlotter, Validator):
         self.accuracies['wl_train'] = []
         self.accuracies['wl_val'] = []
         self.attack_eps = attack_eps
+        self.model_base = model_base
+        
         assert len(self.weakLearners) == 0
 
     def plot_wl_acc(self, path=None):
@@ -55,7 +57,7 @@ class Ensemble(MetricPlotter, Validator):
         if not isinstance(self.weakLearners[i], str):
             learner = self.weakLearners[i]
         else:
-            learner = self.weakLearnerType()
+            learner = self.weakLearnerType(self.model_base)
             learner.model.load_state_dict(torch.load(self.weakLearners[i]))
             learner.model = learner.model.to(torch.device('cuda:0'))
             learner.model.eval()

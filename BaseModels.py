@@ -302,7 +302,7 @@ class Validator():
         torch.cuda.empty_cache()
         return losses, accuracies
     
-    def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, val_attacks=[]):
+    def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, attack_iters=20, restarts=1, val_attacks=[]):
 #         self.memory_usage.append(cutorch.memory_allocated(0))
 #         print("memory:", cutorch.)
 
@@ -323,7 +323,7 @@ class Validator():
 
         if val_X is not None and val_y is not None:
             self.val_checkpoints.append(progress)
-            losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks)
+            losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks, attack_iters=attack_iters, restarts=restarts)
 #             print("losses, accs", losses, accuracies)
             self.losses['val'].append(losses['val'])
             self.accuracies['val'].append(accuracies['val'])

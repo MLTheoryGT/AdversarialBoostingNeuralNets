@@ -5,7 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-from WeakLearners import WongNeuralNetCIFAR10, Net
+from WongBasedTraining import WongBasedTrainingCIFAR10
+
 from pytorch_memlab import LineProfiler 
 from BaseModels import MetricPlotter, Validator
 import torch.cuda as cutorch
@@ -18,7 +19,7 @@ from AdversarialAttacks import attack_fgsm, attack_pgd
 import csv
 import os
 
-def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.127, adv_train_prefix=0, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200, val_flag=True):
+def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.127, adv_train_prefix=0, val_attacks=[], maxSamples=None, predictionWeights=False, batch_size=200, val_flag=True, model_base=PreActResNet18, attack_iters=20, restarts=1):
     def dataset_with_indices(cls):
         """
         Modifies the given Dataset class to return a tuple data, target, index
@@ -99,7 +100,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     f = np.zeros((m, k))
     
     print("attack eps ens", attack_eps_ensemble)
-    ensemble = Ensemble(weakLearners=[], weakLearnerType=weakLearnerType, attack_eps=attack_eps_ensemble)
+    ensemble = Ensemble(weakLearners=[], weakLearnerType=weakLearnerType, attack_eps=attack_eps_ensemble, model_base=model_base)
     
     start = datetime.now()
     
@@ -135,9 +136,9 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         h_i = weakLearnerType(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
         
         if t < adv_train_prefix:
-            h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
+            h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=restarts)
         else:
-            h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights)
+            h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSample, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=restarts)
         
         print("After fit function: ", datetime.now()-start)
         # Get training and test acuracy of WL
@@ -320,8 +321,8 @@ class BoostingSampler(Sampler):
     def setC(self, C):
         self.C = C
 
-def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongNeuralNetCIFAR10, adv_train_prefix=0, val_attacks=[],
-               attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3, batch_size=200, val_flag=True):
+def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongBasedTrainingCIFAR10, adv_train_prefix=0, val_attacks=[],
+               attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3, batch_size=200, val_flag=True, model_base=PreActResNet18, attack_iters=20, restarts=1):
     
 #     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
 #                 transforms.ToTensor(),
@@ -340,7 +341,7 @@ def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=Won
 
     t0 = datetime.now()
 
-    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train_prefix=adv_train_prefix, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size, val_flag=val_flag)
+    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train_prefix=adv_train_prefix, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size, val_flag=val_flag, model_base=model_base, attack_iters=attack_iters, restarts=restarts)
 
     print("Finished in", (datetime.now()-t0).total_seconds(), " s")
     
