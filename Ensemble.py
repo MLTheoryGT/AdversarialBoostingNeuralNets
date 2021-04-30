@@ -60,7 +60,8 @@ class Ensemble(MetricPlotter, Validator):
             learner.model = learner.model.to(torch.device('cuda:0'))
             learner.model.eval()
         prediction = learner.model(X)
-        wLPredictions[:,:,i] = prediction
+        wLPredictions[:,:,i] = F.softmax(prediction, dim=1)
+#         wLPredictions[:,:,i] = prediction
         return wLPredictions
             
             
@@ -124,6 +125,8 @@ class Ensemble(MetricPlotter, Validator):
         del wLPredictions
         assert(output.shape == (len(X), k))
         
+        output = F.normalize(output, p=1, dim=1)
+        output = torch.log(output)
         return output
     
     def gradOptWeights(self, train_loader, num_samples=1000, train_eps=0.127):
@@ -233,7 +236,7 @@ class Ensemble(MetricPlotter, Validator):
             ans[k] = ans[k] / len(dicts)
         return ans
 
-    def record_accuracies(self, progress, train_loader, test_loader, numsamples_train, numsamples_val, val_attacks=[], attack_iters=20):
+    def record_accuracies(self, progress, train_loader, test_loader, numsamples_train, numsamples_val, val_attacks=[], attack_iters=20, restarts=10):
         
         # record train
         if numsamples_train >0:
@@ -265,7 +268,7 @@ class Ensemble(MetricPlotter, Validator):
         for i, data in enumerate(test_loader):
             curSample += val_batch_size
             if curSample >= numsamples_val: break
-            losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='val', val_attacks=val_attacks, attack_iters=attack_iters)
+            losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='val', val_attacks=val_attacks, attack_iters=attack_iters, restarts=restarts)
             val_loss_dicts.append(losses)
             val_acc_dicts.append(accuracies)
             print(accuracies)

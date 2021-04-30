@@ -14,7 +14,7 @@ import numpy as np
     attacks: pass in functions
     numWL: int
 """
-def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_train=1000, numsamples_val=1000, attack_eps_ensemble = [0.03], attack_iters=20, gradOptWeights=False):
+def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_train=1000, numsamples_val=1000, attack_eps_ensemble = [0.03], attack_iters=20, restarts=10, gradOptWeights=False):
     train_transforms = []
     test_transforms = []
     
@@ -57,7 +57,7 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     
     #mini loaders for ensemble
     # @Arvind, I think you may be able to change the batch size here
-    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=100, shuffle=True)
+    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=100, shuffle=True) #Note: change this to True when using a subset
     train_loader_mini = torch.utils.data.DataLoader(
         dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms)),
         batch_size=100, shuffle=True) #change to True?
@@ -80,13 +80,12 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     weights = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8]
     for i in range(numWL):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
-#         ensemble.addWeakLearner(wl[i], wlWeights[i])
-        ensemble.addWeakLearner(wl[i], 1.0)
+        ensemble.addWeakLearner(wl[i], wlWeights[i])
+#         ensemble.addWeakLearner(wl[i], 1.0)
 #         ensemble.gradOptWeights(train_loader_mini)
 #         ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)
         
-#         if i == 3:
         ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train, numsamples_val, val_attacks=attacks, attack_iters=attack_iters)
         print("ensemble accuracies:", ensemble.accuracies)
 

@@ -112,7 +112,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
     
     def gcLoop():
         print("-"*100)
-        print("Training weak learner {}".format(t))
+        print("Training weak learner {} of {}".format(t, numLearners))
         # Boosting matrix update
  
         C_t = np.zeros((m, k))
@@ -167,7 +167,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
             y = data[1].cuda()
 #             print("train_eps_nn: ", train_eps_nn)
 #             delta = attack_fgsm(X, y, attack_eps_nn[0], h_i.predict)
-            delta = attack_pgd(X, y, attack_eps_nn[0], h_i.predict)
+            delta = attack_pgd(X, y, attack_eps_nn[0], h_i.predict, restarts=1)
         
 #             print("delta max: ", delta.max())
 #             print("delta min: ", delta.min())

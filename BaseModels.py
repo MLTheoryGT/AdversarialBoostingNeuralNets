@@ -146,6 +146,7 @@ class MetricPlotter():
         plt.ylabel('Training loss')
         plt.title('Training loss')
         plt.grid()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -157,6 +158,7 @@ class MetricPlotter():
         plt.ylabel('Validation loss')
         plt.title('Validation loss')
         plt.grid()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -168,6 +170,7 @@ class MetricPlotter():
         plt.ylabel('Validation accuracy')
         plt.title('Validation accuracy')
         plt.grid()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -179,6 +182,7 @@ class MetricPlotter():
         plt.ylabel('Training accuracy')
         plt.title('Training accuracy')
         plt.grid()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -192,6 +196,7 @@ class MetricPlotter():
         plt.legend(["Training accuracy", "Validation accuracy"])
         plt.title("Accuracy")
         plt.grid()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -205,6 +210,7 @@ class MetricPlotter():
         plt.legend(["Training loss", "Validation loss"])
         plt.title("Loss")
         plt.grid()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         if path is not None:
             plt.savefig(path, dpi=250)
         plt.show()
@@ -213,6 +219,7 @@ class MetricPlotter():
         # f, ax = plt.subplots(12)
         colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
         plt.subplots()
+        plt.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         for attack_name in self.losses:
             if attack_name not in ['val', 'train']:
                 if len(self.accuracies[attack_name]) == 0: continue
