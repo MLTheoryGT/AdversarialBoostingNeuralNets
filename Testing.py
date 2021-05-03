@@ -56,7 +56,7 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     
     #mini loaders for ensemble
     # @Arvind, I think you may be able to change the batch size here
-    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=200, shuffle=True) #Note: change this to True when using a subset
+    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=128, shuffle=True) #Note: change this to True when using a subset
     train_loader_mini = torch.utils.data.DataLoader(
         dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms)),
         batch_size=100, shuffle=True) #change to True?
