@@ -1,4 +1,5 @@
-from BaseModels import BaseNeuralNet, PreActResNet18
+from BaseModels import BaseNeuralNet
+from Architectures import PreActResNet18, WideResNet
 from torchvision import datasets, transforms
 import torch
 import torch.nn as nn
