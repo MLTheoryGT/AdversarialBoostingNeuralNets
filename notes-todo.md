@@ -99,3 +99,52 @@ for each experiment and use a prefix)
 
 # April 21
 - Working on MaxSamples = 75006 (gradient optimizing the weights at the end of ensemble training)
+
+# Some old and probably useless notes
+## Method for incorporating Wong's method into boosting
+
+* Decision trees:
+  * Take the worst-case perturbation for each example
+  * Overall cost: summed cost of the worst-case perturbation on each example
+  * Apply schapire's update on cost matrix
+
+[ 1. 1. 1.  1. -(k - 1).  1. 1 ]
+
+* Neural networks
+  * Sample minibatches based on the sums of absolute values within each row
+  * Partition each minibatch into k groups
+    * Find which k has the largest associated cost for each example in the minibatch (by looking at the cost matrix)
+    * 
+
+For each example:
+* Find the worst class
+[k1, k2, k3, .. km] = K
+
+randomly initizlize delta
+find cross_entropy(prediction(batch + delta), K)
+delta += alpha * sign(gradient)
+
+
+Cross-entropy loss:
+
+Cost matrix row:
+1 5 -2
+
+Prediction:
+.1 .8 .1
+Ideal prediction:
+0 0 1
+
+Decision tree prediction:
+0 1 0
+
+
+
+Steps to transform a row of the cost matrix:
+* negate
+* add such that the smallest elt. is 0
+* normalize (so the sum is 1)
+  * -1 -5 2
+  * 4 0 7
+  * .37 0 .63
+  * 0 1 0: bad

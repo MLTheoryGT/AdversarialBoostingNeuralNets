@@ -1,5 +1,5 @@
 from Boosting import Ensemble
-from WongBasedTraining import WongBasedTraining
+from WongBasedTraining import WongBasedTrainingCIFAR10
 from AdversarialAttacks import attack_pgd
 from torchvision import datasets, transforms
 from utils import cifar10_mean, cifar10_std
@@ -56,7 +56,7 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     
     #mini loaders for ensemble
     # @Arvind, I think you may be able to change the batch size here
-    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=100, shuffle=True) #Note: change this to True when using a subset
+    test_loader_mini = torch.utils.data.DataLoader(test_ds_index, batch_size=200, shuffle=True) #Note: change this to True when using a subset
     train_loader_mini = torch.utils.data.DataLoader(
         dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms)),
         batch_size=100, shuffle=True) #change to True?
@@ -75,7 +75,7 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
         wl.append(path + f'wl_{i}.pth')
     
     startTime = datetime.now()
-    ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTraining, attack_eps=attack_eps_ensemble)
+    ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTrainingCIFAR10, attack_eps=attack_eps_ensemble)
     weights = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8]
     for i in range(numWL):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
