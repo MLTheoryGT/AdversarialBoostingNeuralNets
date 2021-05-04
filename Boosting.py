@@ -44,7 +44,8 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, alphaT
         maxSamples = [maxSamples for i in range(numLearners)]
     assert(numLearners == len(maxSamples))
     
-    dataset_index = dataset_with_indices(dataset)
+#     dataset_index = dataset_with_indices(dataset)
+    dataset_index=dataset
     
     train_transforms = []
     test_transforms = []
