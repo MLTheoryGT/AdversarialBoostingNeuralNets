@@ -12,7 +12,6 @@ from BaseModels import MetricPlotter, Validator
 import torch.cuda as cutorch
 import gc
 import sys
-from utils import cifar10_mean, cifar10_std
 from datetime import datetime
 from AdversarialAttacks import attack_pgd
 

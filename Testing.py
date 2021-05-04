@@ -5,6 +5,7 @@ from torchvision import datasets, transforms
 from utils import cifar10_mean, cifar10_std
 from datetime import datetime
 import torch
+from utils import applyDSTrans
 import numpy as np
 
 """
@@ -13,43 +14,8 @@ import numpy as np
     attacks: pass in functions
     numWL: int
 """
-def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_train=1000, numsamples_val=1000, attack_eps_ensemble = [0.03], attack_iters=20, restarts=10, gradOptWeights=False):
-    train_transforms = []
-    test_transforms = []
-    
-    def dataset_with_indices(cls):
-        """
-        Modifies the given Dataset class to return a tuple data, target, index
-        instead of just data, target.
-        """
-
-        def __getitem__(self, index):
-            data, target = cls.__getitem__(self, index)
-            return data, target, index
-
-        return type(cls.__name__, (cls,), {
-            '__getitem__': __getitem__,
-        })
-    dataset_index = dataset_with_indices(dataset)
-    
-    train_transforms = []
-    test_transforms = []
-    
-    if dataset == datasets.CIFAR10:
-        for elt in [transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip()]:
-            train_transforms.append(elt)
-    
-    tens = transforms.ToTensor()
-    train_transforms.append(tens)
-    test_transforms.append(tens)
-    
-    if dataset == datasets.CIFAR10:
-        norm = transforms.Normalize(cifar10_mean, cifar10_std)
-        train_transforms.append(norm)
-        test_transforms.append(norm)
-    
-    train_ds_index = dataset_index('./data', train=True, download=True, transform=transforms.Compose(train_transforms))
-    test_ds_index = dataset_index('./data', train=False, download=True, transform=transforms.Compose(test_transforms))
+def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_train=1000, numsamples_val=1000, attack_eps_ensemble = [0.03], attack_iters=20, restarts=10, gradOptWeights=False):    
+    train_ds_index, test_ds_index = applyDSTrans(dataset)
     train_ds_index.targets = torch.tensor(np.array(train_ds_index.targets))
     test_ds_index.targets = torch.tensor(np.array(test_ds_index.targets))
     
@@ -60,7 +26,6 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     train_loader_mini = torch.utils.data.DataLoader(
         dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms)),
         batch_size=100, shuffle=True) #change to True?
-    
     
     wl = []
     wlWeights = []
@@ -76,7 +41,6 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
     
     startTime = datetime.now()
     ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTrainingCIFAR10, attack_eps=attack_eps_ensemble)
-    weights = [2.0, 1.8, 1.6, 1.4, 1.2, 1.0, 0.8]
     for i in range(numWL):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
         ensemble.addWeakLearner(wl[i], wlWeights[i])
@@ -89,5 +53,3 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
         print("ensemble accuracies:", ensemble.accuracies)
 
     return ensemble
-        
-    
