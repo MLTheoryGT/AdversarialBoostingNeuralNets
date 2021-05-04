@@ -13,8 +13,8 @@ from apex import amp
 # from torch.cuda import amp
 import copy
 
-from utils import (upper_limit, lower_limit, std, clamp,
-    attack_pgd, evaluate_pgd)
+from utils import (cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit) as cifar10_imports
+from utils import (cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit) as cifar100_imports
 
 
 class WongBasedTrainingCIFAR10(BaseNeuralNet):
@@ -25,11 +25,17 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
     
     def fit(self, train_loader, test_loader, C=None, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
                   momentum=0.9, epsilon=8, alpha=10, delta_init="random", seed=0, opt_level="O2", loss_scale=1.0, out_dir="WongNNCifar10",
-                  maxSample = None, adv_train=False, val_attacks = [], predictionWeights=None, attack_iters=20, restarts=1):
-        
+                  maxSample = None, adv_train=False, val_attacks = [], predictionWeights=None, attack_iters=20, restarts=1, dataset_name='cifar10'):
+        train_loader.dataset
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
+        
+        if dataset_name == 'cifar10':
+            (std, mu, upper_limit, lower_limit) = cifar10_imports
+        elif dataset_name == 'cifar100':
+            (std, mu, upper_limit, lower_limit) = cifar100_imports
+            
 
 #         train_loader, test_loader = get_loaders(args.data_dir, args.batch_size)
 #          have our own loaders

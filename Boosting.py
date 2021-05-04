@@ -20,10 +20,15 @@ from AdversarialAttacks import attack_fgsm, attack_pgd
 import csv
 import os
 
-def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSamples, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.127, adv_train_prefix=0, val_attacks=[], predictionWeights=False, batch_size=200, model_base=PreActResNet18, attack_iters=20, val_restarts=1):    
+def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSamples, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.127, adv_train_prefix=0, val_attacks=[], predictionWeights=False, batch_size=200, model_base=PreActResNet18, attack_iters=20, val_restarts=1, lr_max=0.2):    
     print("attack_eps_nn: ", attack_eps_nn)
     print("attack_eps_ensemble: ", attack_eps_ensemble)
     print("train_eps_nn: ", train_eps_nn)
+    
+    if dataset == datasets.CIFAR10:
+        dataset_name = 'cifar10'
+    elif dataset == datasets.CIFAR100:
+        dataset_name = 'cifar100'
     
     train_ds_index, test_ds_index = applyDSTrans(dataset)
     train_ds_index.targets = torch.tensor(np.array(train_ds_index.targets))
@@ -88,9 +93,9 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
         h_i = weakLearnerType(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
         
         if t < adv_train_prefix:
-            h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts)
+            h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts, lr_max=lr_max)
         else:
-            h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts)
+            h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts, lr_max=lr_max)
         
         print("After fit function: ", datetime.now()-start)
         # Get training and test acuracy of WL
@@ -235,7 +240,7 @@ class BoostingSampler(Sampler):
         self.C = C
 
 def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongBasedTrainingCIFAR10, adv_train_prefix=0, val_attacks=[],
-               attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3, batch_size=200, model_base=PreActResNet18, attack_iters=20, val_restarts=1):
+               attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3, batch_size=200, model_base=PreActResNet18, attack_iters=20, val_restarts=1, lr_max=0.2):
     
 #     train_dataset = dataset('./data', train=True, download=True, transform=transforms.Compose([
 #                 transforms.ToTensor(),
@@ -254,7 +259,7 @@ def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=Won
 
     t0 = datetime.now()
 
-    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train_prefix=adv_train_prefix, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size, model_base=model_base, attack_iters=attack_iters, val_restarts=restarts)
+    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, adv_train_prefix=adv_train_prefix, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size, model_base=model_base, attack_iters=attack_iters, val_restarts=restarts, lr_max=lr_max)
 
     print("Finished in", (datetime.now()-t0).total_seconds(), " s")
     

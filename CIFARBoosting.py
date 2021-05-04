@@ -23,11 +23,11 @@ epsilons = [0.127]
 from AdversarialAttacks import attack_fgsm, attack_pgd
 
 def train_ensemble(num_wl=15, maxSamples=750000, dataset=datasets.CIFAR10, weakLearnerType=WongBasedTrainingCIFAR10, val_attacks=[], attack_eps_nn=epsilons, attack_eps_ensemble=epsilons, train_eps_nn=8, adv_train_prefix=15, batch_size=batch_size, model_base=PreActResNet18,
-                              attack_iters=20, restarts=10):
+                              attack_iters=20, restarts=10, lr_max=0.2):
 
     ensemble = runBoosting(num_wl, maxSamples, dataset=dataset, weakLearnerType=weakLearnerType, val_attacks=val_attacks, 
                             attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble, train_eps_nn=train_eps_nn, adv_train_prefix=num_wl, batch_size=batch_size, model_base=model_base,
-                            attack_iters=attack_iters, val_restarts=restarts)
+                            attack_iters=attack_iters, val_restarts=restarts, lr_max=lr_max)
 
     # WARNING: training with multiple ensembles hasn't been tested, use with caution
     return ensembles
@@ -49,8 +49,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action='store_true') # is default false?
     parser.add_argument("--test", action='store_true')
-    parser.add_argument("--maxSamples", default=750000, type=int)
-    parser.add_argument("--num_wl", default=15, type=int)
+    parser.add_argument("--maxSamples", default=30000, type=int)
+    parser.add_argument("--num_wl", default=15, type=int) # CHANGE
     parser.add_argument("--train_eps_nn", default=8, type=int)
     parser.add_argument("--batch_size", default=100, type=int) # can try increasing this a lot
     parser.add_argument("--attack_iters", default=20, type=int)
@@ -67,7 +67,11 @@ if __name__ == '__main__':
     args = get_args()
 
     # TODO? move the following to get_args()
-    dataset = datasets.CIFAR10
+    if args.dataset == 'cifar10':
+        dataset = datasets.CIFAR10
+    elif args.dataset == 'cifar100':
+        dataset = datasets.CIFAR100
+
     weakLearnerType = WongBasedTrainingCIFAR10
     val_attacks = [attack_pgd]
     model_base = PreActResNet18
