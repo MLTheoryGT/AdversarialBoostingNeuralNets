@@ -7,17 +7,67 @@ import numpy as np
 
 cifar10_mean = (0.4914, 0.4822, 0.4465)
 cifar10_std = (0.2471, 0.2435, 0.2616)
+cifar10_mu = torch.tensor(cifar10_mean).view(3,1,1).cuda()
+cifar10_std = torch.tensor(cifar10_std).view(3,1,1).cuda()
+cifar10_upper_limit = ((1 - cifar10_mu)/ cifar10_std)
+cifar10_lower_limit = ((0 - cifar10_mu)/ cifar10_std)
 
-mu = torch.tensor(cifar10_mean).view(3,1,1).cuda()
-std = torch.tensor(cifar10_std).view(3,1,1).cuda()
-
-upper_limit = ((1 - mu)/ std)
-lower_limit = ((0 - mu)/ std)
-
+cifar100_mean = (0.507, 0.487, 0.441) 
+cifar100_std = (0.267, 0.256, 0.276)
+cifar100_mu = torch.tensor(cifar100_mean).view(3,1,1).cuda()
+cifar100_std = torch.tensor(cifar100_std).view(3,1,1).cuda()
+cifar100_upper_limit = ((1 - cifar100_mu)/ cifar100_std)
+cifar100_lower_limit = ((0 - cifar100_mu)/ cifar100_std)
 
 def clamp(X, lower_limit, upper_limit):
     return torch.max(torch.min(X, upper_limit), lower_limit)
 
+"""
+    Takes in a pytorch dataset object and returns train/test datasets after transformations
+"""
+def applyDSTrans(dataset):
+    train_transforms = []
+    test_transforms = []
+    
+    if dataset == datasets.CIFAR10 or dataset==datasets.CIFAR100:
+        for elt in [transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip()]:
+            train_transforms.append(elt)
+    
+    tens = transforms.ToTensor()
+    train_transforms.append(tens)
+    test_transforms.append(tens)
+    
+    if dataset == datasets.CIFAR10:
+        norm = transforms.Normalize(cifar10_mean, cifar10_std)
+        train_transforms.append(norm)
+        test_transforms.append(norm)
+
+    if dataset == datasets.CIFAR100:
+        norm = transforms.Normalize(cifar100_mean, cifar100_std)
+        train_transforms.append(norm)
+        test_transforms.append(norm)
+                
+    assert(len(train_transforms) == 4)
+    assert(len(test_transforms) == 2)
+
+    train_ds_index = dataset_index('./data', train=True, download=True, transform=transforms.Compose(train_transforms))
+    test_ds_index = dataset_index('./data', train=False, download=True, transform=transforms.Compose(test_transforms))
+
+    return train_ds_index, test_ds_index
+
+def dataset_with_indices(cls):
+    """
+    Modifies the given Dataset class to return a tuple data, target, index
+    instead of just data, target.
+    """
+
+    def __getitem__(self, index):
+        data, target = cls.__getitem__(self, index)
+        return data, target, index
+
+    return type(cls.__name__, (cls,), {
+        '__getitem__': __getitem__,
+    })
 
 def get_loaders(dir_, batch_size):
     train_transform = transforms.Compose([
