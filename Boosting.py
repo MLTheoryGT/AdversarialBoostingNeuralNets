@@ -93,9 +93,9 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
         h_i = weakLearnerType(attack_eps=attack_eps_nn, train_eps=train_eps_nn)
         
         if t < adv_train_prefix:
-            h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts, lr_max=lr_max)
+            h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts, lr_max=lr_max, dataset_name=dataset_name)
         else:
-            h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts, lr_max=lr_max)
+            h_i.fit(train_loader, test_loader, C_t, adv_train=False, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts, lr_max=lr_max, dataset_name=dataset_name)
         
         print("After fit function: ", datetime.now()-start)
         # Get training and test acuracy of WL
