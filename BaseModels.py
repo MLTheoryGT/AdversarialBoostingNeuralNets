@@ -134,7 +134,7 @@ class Validator():
         # Must be implemented by classes that inherit Validator
         pass
     
-    def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha=1e-2, attack_iters=20, restarts=1, y_pred=None):
+    def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha=1e-2, attack_iters=20, restarts=1, y_pred=None, dataset_name='cifar10'):
 #         print("in validation")
         
         losses = {} # (non_adv, adv)
@@ -172,7 +172,7 @@ class Validator():
                     delta = attack_fgsm(X, y, epsilon, self.predict)
                 else:
                     # assuming attack == attack_pgd
-                    delta = attack_pgd(X, y, epsilon, self.predict, attack_iters=attack_iters, restarts=restarts)
+                    delta = attack_pgd(X, y, epsilon, self.predict, attack_iters=attack_iters, restarts=restarts, dataset_name=dataset_name)
                 X_adv = X + delta
                 y_pred = self.predict(X_adv).detach()
                 accuracy = (y_pred.max(1)[1] == y).sum().item() / X_adv.shape[0]
@@ -187,7 +187,7 @@ class Validator():
         torch.cuda.empty_cache()
         return losses, accuracies
     
-    def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, attack_iters=20, restarts=1, val_attacks=[]):
+    def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, attack_iters=20, restarts=1, val_attacks=[], dataset_name='cifar10'):
 #         self.memory_usage.append(cutorch.memory_allocated(0))
 #         print("memory:", cutorch.)
 
@@ -202,13 +202,13 @@ class Validator():
             
         if train_X is not None and train_y is not None:
             self.train_checkpoints.append(progress)
-            losses, accuracies = self.calc_accuracies(train_X, train_y, data_type='train')
+            losses, accuracies = self.calc_accuracies(train_X, train_y, data_type='train', dataset_name=dataset_name)
             self.losses['train'].append(losses['train'])
             self.accuracies['train'].append(accuracies['train'])
 
         if val_X is not None and val_y is not None:
             self.val_checkpoints.append(progress)
-            losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks, attack_iters=attack_iters, restarts=restarts)
+            losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks, attack_iters=attack_iters, restarts=restarts, dataset_name=dataset_name)
 #             print("losses, accs", losses, accuracies)
             self.losses['val'].append(losses['val'])
             self.accuracies['val'].append(accuracies['val'])

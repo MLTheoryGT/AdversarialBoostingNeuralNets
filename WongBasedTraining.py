@@ -3,6 +3,7 @@ from Architectures import PreActResNet18, WideResNet
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import datasets
 import numpy as np
 import torch.cuda as cutorch
 cuda = torch.device('cuda:0')
@@ -11,10 +12,11 @@ import time
 # import logging
 from apex import amp
 # from torch.cuda import amp
+from utils import clamp
 import copy
 
-from utils import (cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit) as cifar10_imports
-from utils import (cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit) as cifar100_imports
+from utils import (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
+from utils import (cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
 
 
 class WongBasedTrainingCIFAR10(BaseNeuralNet):
@@ -25,17 +27,17 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
     
     def fit(self, train_loader, test_loader, C=None, lr_schedule="cyclic", lr_min=0, lr_max=0.2, weight_decay=5e-4, early_stop=True,
                   momentum=0.9, epsilon=8, alpha=10, delta_init="random", seed=0, opt_level="O2", loss_scale=1.0, out_dir="WongNNCifar10",
-                  maxSample = None, adv_train=False, val_attacks = [], predictionWeights=None, attack_iters=20, restarts=1, dataset_name='cifar10'):
+                  maxSample = None, adv_train=False, val_attacks = [], predictionWeights=None, attack_iters=20, restarts=1, dataset_name="cifar10"):
         train_loader.dataset
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
         
-        if dataset_name == 'cifar10':
-            (std, mu, upper_limit, lower_limit) = cifar10_imports
-        elif dataset_name == 'cifar100':
-            (std, mu, upper_limit, lower_limit) = cifar100_imports
-            
+    
+        if dataset_name == "cifar10":
+            (std_tup, mu_tup, std, mu, upper_limit, lower_limit) = (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
+        elif dataset_name == "cifar100":
+            (std_tup, mu_tup, std, mu, upper_limit, lower_limit) = (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
 
 #         train_loader, test_loader = get_loaders(args.data_dir, args.batch_size)
 #          have our own loaders
@@ -102,7 +104,7 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
                     delta.data = clamp(delta, lower_limit - X, upper_limit - X)
                 if i % 100 == 99: #Adding this part from our own code (for validation)
 #                     print("about to record accs", val_attacks)
-                    self.record_accuracies(currSamples, train_X = X, train_y = y, val_X=val_X, val_y=val_y , attack_iters=attack_iters, restarts=restarts, val_attacks=val_attacks)
+                    self.record_accuracies(currSamples, train_X = X, train_y = y, val_X=val_X, val_y=val_y , attack_iters=attack_iters, restarts=restarts, val_attacks=val_attacks, dataset_name = dataset_name)
                 delta.requires_grad = True
                 output = model(X + delta[:X.size(0)])
                 loss = F.cross_entropy(output, y)
@@ -122,16 +124,16 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
                 train_acc += (output.max(1)[1] == y).sum().item()
                 train_n += y.size(0)
                 scheduler.step()
-            if early_stop:
-                # Check current PGD robustness of model using random minibatch
-                X, y = first_batch
-                pgd_delta = attack_pgd(model, X, y, epsilon, pgd_alpha, 5, 1, opt)
-                with torch.no_grad():
-                    output = model(clamp(X + pgd_delta[:X.size(0)], lower_limit, upper_limit))
-                robust_acc = (output.max(1)[1] == y).sum().item() / y.size(0)
-                if robust_acc - prev_robust_acc < -0.2:
-                    break
-                prev_robust_acc = robust_acc
-                best_state_dict = copy.deepcopy(model.state_dict())
+#             if early_stop:
+#                 # Check current PGD robustness of model using random minibatch
+#                 X, y = first_batch
+#                 pgd_delta = attack_pgd(model, X, y, epsilon, pgd_alpha, 5, 1, opt)
+#                 with torch.no_grad():
+#                     output = model(clamp(X + pgd_delta[:X.size(0)], lower_limit, upper_limit))
+#                 robust_acc = (output.max(1)[1] == y).sum().item() / y.size(0)
+#                 if robust_acc - prev_robust_acc < -0.2:
+#                     break
+#                 prev_robust_acc = robust_acc
+#                 best_state_dict = copy.deepcopy(model.state_dict())
             epoch_time = time.time()
             lr = scheduler.get_last_lr()[0]

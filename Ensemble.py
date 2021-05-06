@@ -155,55 +155,11 @@ class Ensemble(MetricPlotter, Validator):
         self.toggleWeightGrad(False)
         self.weakLearnerWeights = self.weakLearnerWeightsTensor.squeeze(1).tolist()
         print("weights after opt:", self.weakLearnerWeights)
-        print("tensor after opt:", self.weakLearnerWeightsTensor)
-            
-
+        print("tensor after opt:", self.weakLearnerWeightsTensor)    
     
     def toggleWeightGrad(self, option=True):
         self.weakLearnerWeightsTensor.requires_grad = option
-        
-    
-    
-#     def calc_adv_accuracy(self, dataset, num_batches = 15, train = False, attack_names = []):
-#         accuracies = {}
-#         loader = torch.utils.data.DataLoader(
-#             dataset('./data', train=train, download=True, transform=transforms.Compose([
-#             transforms.ToTensor(),
-#             ])),
-#             batch_size=100, shuffle=True)
-        
-    
-#     def calc_accuracy(self, dataset, num_batches = 15, train=True):
-#         totalIts = 0
-#         loader = torch.utils.data.DataLoader(
-#             dataset('./data', train=train, download=True, transform=transforms.Compose([
-#             transforms.ToTensor(),
-#             ])),
-#             batch_size=100, shuffle=True)
-        
-#         accuracy = 0
-#         for data in loader:
-#             train_X_default = data[0]
-#             train_Y_default = data[1]
-            
-# #             predictions = self.schapirePredict(train_X_default.to(torch.device('cuda:0')), 10)
-#             predictions = self.schapireContinuousPredict(train_X_default.to(torch.device('cuda:0')), 10).argmax(axis=1).numpy()
-            
-#             accuracy += (predictions == train_Y_default.numpy()).astype(int).sum()/len(predictions)
-#             totalIts+=1
-#             if totalIts > num_batches:
-#                 break
-#         return accuracy / totalIts
-    
-#     def record_accuracies(self, dataset, wl_idx):
-#         train_acc = self.calc_accuracy(dataset, train=True)
-#         val_acc = self.calc_accuracy(dataset, train=False)
-#         print("After newest WL, the ensemble's validation score is: ", train_acc)
-#         print("After newest WL, the ensemble's training score is: ", val_acc)
-#         self.accuracies['train'].append(train_acc)
-#         self.accuracies['val'].append(val_acc)
-#         self.train_checkpoints.append(wl_idx)
-#         self.val_checkpoints.append(wl_idx)
+
     def get_sum(self, dicts):
         ans = {}
         for d in dicts:
@@ -238,7 +194,7 @@ class Ensemble(MetricPlotter, Validator):
             ans[k] = ans[k] / len(dicts)
         return ans
 
-    def record_accuracies(self, progress, train_loader, test_loader, numsamples_train, numsamples_val, val_attacks=[], attack_iters=20, restarts=10):
+    def record_accuracies(self, progress, train_loader, test_loader, numsamples_train, numsamples_val, val_attacks=[], attack_iters=20, restarts=10, dataset_name='cifar10'):
         
         # record train
         if numsamples_train >0:
@@ -252,7 +208,7 @@ class Ensemble(MetricPlotter, Validator):
             for i, data in enumerate(train_loader):
                 curSample += train_batch_size
                 if curSample >= numsamples_train: break
-                losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='train')
+                losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='train', dataset_name=dataset_name)
                 train_loss_dicts.append(losses)
                 train_acc_dicts.append(accuracies)
             self.losses['train'].append(self.get_sum(train_loss_dicts)['train'])
@@ -270,7 +226,7 @@ class Ensemble(MetricPlotter, Validator):
         for i, data in enumerate(test_loader):
             curSample += val_batch_size
             if curSample >= numsamples_val: break
-            losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='val', val_attacks=val_attacks, attack_iters=attack_iters, restarts=restarts)
+            losses, accuracies = self.calc_accuracies(data[0].cuda(), data[1].cuda(), data_type='val', val_attacks=val_attacks, attack_iters=attack_iters, restarts=restarts, dataset_name=dataset_name)
             val_loss_dicts.append(losses)
             val_acc_dicts.append(accuracies)
             print(accuracies)

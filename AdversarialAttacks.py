@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
-from utils import std, upper_limit, lower_limit
+from utils import (cifar10_std, cifar10_upper_limit, cifar10_lower_limit)
+from utils import (cifar100_std, cifar100_upper_limit, cifar100_lower_limit)
 import matplotlib.pyplot as plt
 
 # taken from https://github.com/locuslab/fast_adversarial/blob/master/MNIST/evaluate_mnist.py
@@ -43,11 +44,17 @@ def attack_pgd_mnist(X, y, epsilon, model, alpha, attack_iters=5, restarts=1):
         max_loss = torch.max(max_loss, all_loss)
     return max_delta
 
-def attack_pgd(X, y, epsilon, model, alpha=(2 / 255.)/std, attack_iters=20, restarts=1):
+def attack_pgd(X, y, epsilon, model, attack_iters=20, restarts=1, dataset_name='cifar10'):
 #     print("pgd called with", epsilon, alpha, attack_iters, restarts)
 #     alpha = alpha * 100
 #     print(alpha)
 #     print("x30")
+    if dataset_name == 'cifar10':
+        (std, upper_limit, lower_limit) = (cifar10_std, cifar10_upper_limit, cifar10_lower_limit)
+    elif dataset_name == 'cifar100':
+        (std, upper_limit, lower_limit) = (cifar100_std, cifar100_upper_limit, cifar100_lower_limit)
+    alpha = (2/255.)/std
+    
     epsilon = torch.tensor([[[epsilon]], [[epsilon]], [[epsilon]]]).cuda()
     max_loss = torch.zeros(y.shape[0]).cuda()
     max_delta = torch.zeros_like(X).cuda()
