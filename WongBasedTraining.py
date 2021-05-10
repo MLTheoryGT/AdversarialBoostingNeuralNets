@@ -61,10 +61,10 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
         num_epochs = max(1, config['num_samples_wl'] // epoch_size)
         lr_steps = num_epochs * len(train_loader)
         
-        if config['lr_schedule'] == 'cyclic':
+        if config['lr_schedule_wl'] == 'cyclic':
             scheduler = torch.optim.lr_scheduler.CyclicLR(opt, base_lr=config['lr_min_wl'], max_lr=config['lr_max_wl'],
                 step_size_up=lr_steps / 2, step_size_down=lr_steps / 2)
-        elif config['lr_schedule'] == 'multistep':
+        elif config['lr_schedule_wl'] == 'multistep':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[lr_steps / 2, lr_steps * 3 / 4], gamma=0.1)
 
         # Training
@@ -89,8 +89,8 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
                         delta[:, j, :, :].uniform_(-epsilon[j][0][0].item(), epsilon[j][0][0].item())
                     delta.data = clamp(delta, lower_limit - X, upper_limit - X)
                 if i % 100 == 99:
-                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, train_X=X, train_y=y, attack_iters=config["attack_iters"], 
-                                            restarts=config["restarts"], val_attacks=config["val_attacks"], dataset_name=config["dataset_name"])
+                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, train_X=X, train_y=y, attack_iters=config["attack_iters_wl"], 
+                                            restarts=config["restarts_wl"], val_attacks=config["val_attacks"], dataset_name=config["dataset_name"])
                 delta.requires_grad = True
                 output = model(X + delta[:X.size(0)])
                 loss = F.cross_entropy(output, y)
@@ -123,7 +123,7 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
 #                 best_state_dict = copy.deepcopy(model.state_dict())
             epoch_time = time.time()
             lr = scheduler.get_last_lr()[0]
-            print('%d \t %.1f \t \t %.4f \t %.4f \t %.4f', epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n)
+            print('%d \t %.1f \t \t %.4f \t %.4f \t %.4f'%(epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n))
         
         train_time = time.time()
         print('Total train time: %.4f minutes', (train_time - start_train_time)/60)

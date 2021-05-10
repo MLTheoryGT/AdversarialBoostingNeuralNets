@@ -67,7 +67,7 @@ def SchapireWongMulticlassBoosting(config):
         train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, batch_size=config['batch_size_wl'])
         
         # Fit WL on weighted subset of data
-        h_i = config['weakLearnerType'](attack_eps=config['attack_eps_wl'], train_eps=config['train_eps_wl'], model_base=config['model_base'])
+        h_i = config['weakLearnerType'](attack_eps=config['attack_eps_wl'], model_base=config['model_base'])
         
         h_i.fit(train_loader, test_loader, config)
 
@@ -92,10 +92,12 @@ def SchapireWongMulticlassBoosting(config):
         for advCounter, data in enumerate(train_loader_default):
             X = data[0].cuda()
             y = data[1].cuda()
-            delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1)
+#             delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1, attack_iters=20)
+            delta = attack_fgsm(X, y, config['attack_eps_wl'][0], h_i.predict)
             predictions = h_i.predict(X + delta).argmax(axis=1)
             indices = predictions.detach().int().cpu().numpy()
-            allIndices[np.arange(advCounter*advBatchSize, (advCounter + 1)*advBatchSize)] = indices
+            upper_bound = min(len(train_loader_default.dataset), (advCounter + 1)*advBatchSize)
+            allIndices[np.arange(advCounter*advBatchSize, upper_bound)] = indices
         
         print("After allindices: ", datetime.now()-start)
         print("Predictions: ", allIndices[:10])
