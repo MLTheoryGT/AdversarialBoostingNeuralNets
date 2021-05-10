@@ -5,7 +5,6 @@ from torchvision import transforms, datasets
 from Boosting import BoostingSampler
 import matplotlib.pyplot as plt
 
-
 def FakeSchapireMulticlassBoosting(weakLearner, numLearners, dataset, advDelta=0, alphaTol=1e-5, adv=True, maxIt=float("inf")):
     def dataset_with_indices(cls):
         """

@@ -8,21 +8,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from WongBasedTraining import WongBasedTrainingCIFAR10
 from pytorch_memlab import LineProfiler 
-from BaseModels import MetricPlotter, Validator
+from BaseModels import Validator
 import torch.cuda as cutorch
 import gc
 import sys
 from datetime import datetime
 from AdversarialAttacks import attack_pgd
 
-class Ensemble(MetricPlotter, Validator):
-    def __init__(self, weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTrainingCIFAR10, attack_eps=[], model_base=PreActResNet18):
+class Ensemble(Validator):
+    def __init__(self, weakLearnerType, attack_eps, model_base, weakLearners=[], weakLearnerWeights=[]):
         """
         """
-#         print("weakLearners before super call:", weakLearners)
-        MetricPlotter.__init__(self, 'Number of weak learners')
-        Validator.__init__(self)
-#         print("weakLearners after super call:", weakLearners)
+        Validator.__init__(self, 'Number of weak learners', attack_eps)
         self.weakLearners = weakLearners
         self.weakLearnerWeights = weakLearnerWeights
         self.weakLearerWeightsTensor = torch.tensor(weakLearnerWeights, requires_grad=False).unsqueeze(1).float().cuda()
@@ -147,13 +144,13 @@ class Ensemble(MetricPlotter, Validator):
         self.toggleWeightGrad(True)
         optim = torch.optim.Adam([self.weakLearnerWeightsTensor], lr=0.01)
         total_samples = 0
-        for i, data in enumerate(train_loader):
+        for _, data in enumerate(train_loader):
             X, y = data[0].cuda(), data[1].cuda()
             X_adv = attack_pgd(X, y, train_eps, self.predict)
             if total_samples > num_samples:
-                break;
+                break
             total_samples += len(X)
-            output = self.predict(X)
+            output = self.predict(X_adv)
             optim.zero_grad()
             loss = F.cross_entropy(output, y)
             loss.backward()
@@ -200,8 +197,7 @@ class Ensemble(MetricPlotter, Validator):
             ans[k] = ans[k] / len(dicts)
         return ans
 
-    def record_accuracies(self, progress, train_loader, test_loader, numsamples_train, numsamples_val, val_attacks=[], attack_iters=20, restarts=10, dataset_name='cifar10'):
-        
+    def record_accuracies(self, progress, train_loader, test_loader, numsamples_train, numsamples_val, val_attacks, attack_iters, restarts, dataset_name):
         # record train
         if numsamples_train >0:
             train_batch_size = train_loader.batch_size
@@ -224,8 +220,6 @@ class Ensemble(MetricPlotter, Validator):
         
         val_batch_size = test_loader.batch_size
         self.val_checkpoints.append(progress)
-        val_loss = 0
-        val_acc = 0
         curSample = 0
         val_loss_dicts = []
         val_acc_dicts = []
@@ -241,11 +235,8 @@ class Ensemble(MetricPlotter, Validator):
         self.losses['val'].append(val_loss_dict['val'])
         self.accuracies['val'].append(val_acc_dict['val'])
         for k in val_loss_dict:
-#             print("k:", k)
             if isinstance(k, str): continue
             attack = k
-#             print("attack:", attack) #should include fgsm
-            
             if len(self.losses[attack.__name__]) == 0:
                 self.losses[attack.__name__] = [[] for i in range(len(self.attack_eps))]
                 self.accuracies[attack.__name__] = [[] for i in range(len(self.attack_eps))]

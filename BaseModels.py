@@ -1,28 +1,19 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-import numpy as np
 cuda = torch.device('cuda:0')
-import torch.cuda as cutorch
-import gc
 
 from AdversarialAttacks import attack_fgsm, attack_pgd
 
-class MetricPlotter():
-    
-    def __init__(self, xlabel):
+class Validator():
+    def __init__(self, xlabel, attack_eps):
         self.val_checkpoints = [] # this is the x value for plotting
         self.train_checkpoints = []
         self.xlabel = xlabel
+        self.attack_eps = attack_eps
 
         self.losses = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
         self.accuracies = {'train': [], 'val': [], 'attack_fgsm': [], 'attack_pgd': []}
-        
-#         for i in range(len(self.attack_eps)):
-#             self.memory_usage = []
-#             self.train_memory = []
-#             self.val_memory = []
 
     def plot_train_loss(self, path=None):
         plt.subplots()
@@ -127,21 +118,14 @@ class MetricPlotter():
         plt.ylabel("Total memory usage")
         plt.grid()
         plt.title("Memory usage over number of iterations")
-
-class Validator():
     
     def predict(self, X):
         # Must be implemented by classes that inherit Validator
         pass
     
     def calc_accuracies(self, X, y, data_type='val', val_attacks=[], alpha=1e-2, attack_iters=20, restarts=1, y_pred=None, dataset_name='cifar10'):
-#         print("in validation")
-        
         losses = {} # (non_adv, adv)
         accuracies = {}
-                
-                
-
         # accuracy on clean examples
         if y_pred is None:
             y_pred = self.predict(X).detach() # did this to debug memory issues (1 / 18)
@@ -187,19 +171,7 @@ class Validator():
         torch.cuda.empty_cache()
         return losses, accuracies
     
-    def record_accuracies(self, progress, val_X = None, val_y = None, train_X=None, train_y=None, attack_iters=20, restarts=1, val_attacks=[], dataset_name='cifar10'):
-#         self.memory_usage.append(cutorch.memory_allocated(0))
-#         print("memory:", cutorch.)
-
-        # seems that at this point there are already NN params, but right before calling this function there are no NN params???? (1/18)
-#         if len(self.weakLearners) == 2 and self.xlabel == 'Number of weak learners':
-#             for obj in gc.get_objects():
-#                 try:
-#                     if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-#                         print(type(obj), obj.size())
-#                 except:
-#                     pass
-            
+    def record_accuracies(self, progress, val_X, val_y, train_X, train_y, attack_iters, restarts, val_attacks, dataset_name):
         if train_X is not None and train_y is not None:
             self.train_checkpoints.append(progress)
             losses, accuracies = self.calc_accuracies(train_X, train_y, data_type='train', dataset_name=dataset_name)
@@ -209,15 +181,9 @@ class Validator():
         if val_X is not None and val_y is not None:
             self.val_checkpoints.append(progress)
             losses, accuracies = self.calc_accuracies(val_X, val_y, data_type='val', val_attacks = val_attacks, attack_iters=attack_iters, restarts=restarts, dataset_name=dataset_name)
-#             print("losses, accs", losses, accuracies)
             self.losses['val'].append(losses['val'])
             self.accuracies['val'].append(accuracies['val'])
-#             print("Val accuracy:", accuracies['val'])
-#             print("losses", losses)
-#             print("self.losses", self.losses)
             for attack in losses:
-#                 print("in loop attack: ", attack)
-                
                 if type(attack) != str:
                     if len(self.losses[attack.__name__]) == 0:
                         self.losses[attack.__name__] = [[] for i in range(len(self.attack_eps))]
@@ -227,14 +193,10 @@ class Validator():
                         self.accuracies[attack.__name__][i].append(accuracies[attack][i])
             print("Progress: %d,  val accuracy: %.4f" %(progress, self.accuracies['val'][-1]))
             print("PGD accuracy:", self.accuracies['attack_pgd'])
-    
-    
 
-class BaseNeuralNet(MetricPlotter, Validator):
-    
-    def __init__(self, netOfChoice):
-        MetricPlotter.__init__(self, 'Total samples')
-        Validator.__init__(self)
+class BaseNeuralNet(Validator):
+    def __init__(self, netOfChoice, attack_eps):
+        Validator.__init__(self, "Total Samples", attack_eps)
         self.model = netOfChoice().to(cuda)
 
    # overrides the predict in Validator

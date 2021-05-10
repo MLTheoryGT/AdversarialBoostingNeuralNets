@@ -8,8 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from WongBasedTraining import WongBasedTrainingCIFAR10
-from pytorch_memlab import LineProfiler 
-from BaseModels import MetricPlotter, Validator
+from BaseModels import Validator
 import torch.cuda as cutorch
 import gc
 import sys
@@ -19,17 +18,11 @@ from AdversarialAttacks import attack_fgsm, attack_pgd
 import csv
 import os
 
-def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSamples, alphaTol=1e-5, attack_eps_nn=[], attack_eps_ensemble=[],train_eps_nn=0.127, val_attacks=[], predictionWeights=False, batch_size=200, model_base=PreActResNet18, attack_iters=20, val_restarts=1, lr_max=0.2):    
-    print("attack_eps_nn: ", attack_eps_nn)
-    print("attack_eps_ensemble: ", attack_eps_ensemble)
-    print("train_eps_nn: ", train_eps_nn)
+def SchapireWongMulticlassBoosting(config):
+    print("attack_eps_wl: ", config['attack_eps_wl'])
+    print("train_eps_wl: ", config['train_eps_wl'])
     
-    if dataset==datasets.CIFAR10:
-        dataset_name = "cifar10"
-    elif dataset==datasets.CIFAR100:
-        dataset_name = "cifar100"
-    
-    train_ds, test_ds = applyDSTrans(dataset)
+    train_ds, test_ds = applyDSTrans(config['dataset'])
     train_ds.targets = torch.tensor(np.array(train_ds.targets))
     test_ds.targets = torch.tensor(np.array(test_ds.targets))
 
@@ -37,27 +30,18 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
     k = len(train_ds.classes)
     
     # Regular loaders used for training
-    test_loader = torch.utils.data.DataLoader(test_ds, batch_size=batch_size, shuffle=True)
-    for data in test_loader:
-        val_X = data[0].cuda()
-        val_y = data[1].cuda()
-        break
+    test_loader = torch.utils.data.DataLoader(test_ds, batch_size=config['batch_size_wl'], shuffle=True)
 
-    train_loader_default = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=False)
-    test_loader_default = torch.utils.data.DataLoader(test_ds, batch_size=batch_size, shuffle=False)
-    for data in train_loader_default:
-        train_X = data[0].cuda()
-        train_y = data[1].cuda()
-        break
+    train_loader_default = torch.utils.data.DataLoader(train_ds, batch_size=config['batch_size_wl'], shuffle=False)
+    test_loader_default = torch.utils.data.DataLoader(test_ds, batch_size=config['batch_size_wl'], shuffle=False)
 
     f = np.zeros((m, k))
     
-    print("attack eps ens", attack_eps_ensemble)
-    ensemble = Ensemble(weakLearners=[], weakLearnerType=weakLearnerType, attack_eps=attack_eps_ensemble, model_base=model_base)
+    ensemble = Ensemble(weakLearnerType=config['weakLearnerType'], attack_eps=[], model_base=config['model_base'], weakLearners=[])
     
     start = datetime.now()
     
-    path_head = f'./models/{dataset_name}/{maxSamples}Eps{train_eps_nn}/'
+    path_head = f"./models/{config['dataset_name']}/{config['num_samples_wl']}Eps{config['train_eps_wl']}/"
     print("path_head:", path_head)
     if os.path.exists(path_head):
         print("Already exists, exiting")
@@ -67,7 +51,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
     
     def gcLoop():
         print("-"*100)
-        print("Training weak learner {} of {}".format(t, numLearners))
+        print("Training weak learner {} of {}".format(t, config['num_wl']))
         # Boosting matrix update
  
         C_t = np.zeros((m, k))
@@ -80,16 +64,12 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
         
         # Set up boosting samplers
         train_sampler = BoostingSampler(train_ds, C_tp)
-        train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, batch_size=batch_size)
+        train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, batch_size=config['batch_size_wl'])
         
         # Fit WL on weighted subset of data
-        h_i = weakLearnerType(attack_eps=attack_eps_nn, train_eps=train_eps_nn, model_base=model_base)
-#         print(train_loader.dataset)
-#         print(test_loader.dataset)
-#         assert(train_loader.dataset == datasets.CIFAR10)
-#         assert(test_loader.dataset == datasets.CIFAR10)
+        h_i = config['weakLearnerType'](attack_eps=config['attack_eps_wl'], train_eps=config['train_eps_wl'], model_base=config['model_base'])
         
-        h_i.fit(train_loader, test_loader, C_t, adv_train=True, val_attacks=val_attacks, maxSample=maxSamples, predictionWeights=predictionWeights, attack_iters=attack_iters, restarts=val_restarts, lr_max=lr_max, dataset_name=dataset_name)
+        h_i.fit(train_loader, test_loader, config)
 
         # Get training and test acuracy of WL
         _, predictions, _ = pytorch_predict(h_i.model, test_loader_default, torch.device('cuda')) #y_true, y_pred, y_pred_prob
@@ -112,12 +92,8 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
         for advCounter, data in enumerate(train_loader_default):
             X = data[0].cuda()
             y = data[1].cuda()
-#             print("train_eps_nn: ", train_eps_nn)
-#             delta = attack_fgsm(X, y, attack_eps_nn[0], h_i.predict)
-            delta = attack_pgd(X, y, attack_eps_nn[0], h_i.predict, restarts=1)
+            delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1)
             predictions = h_i.predict(X + delta).argmax(axis=1)
-#             print("RegularAcc: ", (regPred==y).int().sum()/y.shape[0])
-#             print("AdvAcc: ", (predictions==y).int().sum()/y.shape[0])
             indices = predictions.detach().int().cpu().numpy()
             allIndices[np.arange(advCounter*advBatchSize, (advCounter + 1)*advBatchSize)] = indices
         
@@ -143,8 +119,6 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
         model_path = f'{path_head}wl_{t}.pth'
         torch.save(h_i.model.state_dict(), model_path)
         
-        h_iRef = h_i
-        h_iModelRef = h_i.model
         del h_i.model
         del h_i
         del predictions
@@ -156,7 +130,7 @@ def SchapireWongMulticlassBoosting(weakLearnerType, numLearners, dataset, maxSam
     
         
     #end of gc loop
-    for t in range(numLearners):
+    for t in range(config['num_wl']):
         gcLoop()
         gc.collect()
         
@@ -224,14 +198,13 @@ class BoostingSampler(Sampler):
     def setC(self, C):
         self.C = C
 
-def runBoosting(numWL, maxSamples, dataset=datasets.CIFAR10, weakLearnerType=WongBasedTrainingCIFAR10, val_attacks=[],
-               attack_eps_nn=[], attack_eps_ensemble=[], train_eps_nn=0.3, batch_size=200, model_base=PreActResNet18, attack_iters=20, val_restarts=1, lr_max=0.2):
+def runBoosting(config):
 
     from datetime import datetime
 
     t0 = datetime.now()
-
-    ensemble = SchapireWongMulticlassBoosting(weakLearnerType, numWL, dataset, alphaTol=1e-10, val_attacks=val_attacks, maxSamples = maxSamples, predictionWeights=False, attack_eps_nn=attack_eps_nn, attack_eps_ensemble=attack_eps_ensemble,train_eps_nn=train_eps_nn, batch_size=batch_size, model_base=model_base, attack_iters=attack_iters, val_restarts=val_restarts, lr_max=lr_max)
+    
+    ensemble = SchapireWongMulticlassBoosting(config)
 
     print("Finished in", (datetime.now()-t0).total_seconds(), " s")
     
