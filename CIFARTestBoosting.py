@@ -10,6 +10,7 @@ from datetime import datetime
 from Testing import testEnsemble
 from Boosting import Ensemble, runBoosting
 from AdversarialAttacks import attack_fgsm, attack_pgd
+import json
 
 import utils
 
@@ -42,32 +43,42 @@ def test_ensemble(path, attacks, num_wl, dataset, maxSamples=750000, numsamples_
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--maxSamples", default=30000, type=int)
-    parser.add_argument("--numsamples_train", default=200, type=int)
-    parser.add_argument("--numsamples_val", default=1500, type=int)
-    parser.add_argument("--train_eps_nn", default=8, type=int)
-    parser.add_argument("--num_wl", default=15, type=int) # CHANGE
-    parser.add_argument("--batch_size", default=128, type=int) # can try increasing this a lot
-    parser.add_argument("--attack_iters", default=20, type=int)
-    parser.add_argument("--testing_restarts", default=10, type=int)
-    parser.add_argument("--dataset", default='cifar10')
+    # parser.add_argument("--num_samples_wl", default=30000, type=int)
+    # parser.add_argument("--num_samples_train", default=200, type=int)
+    # parser.add_argument("--num_samples_val", default=1500, type=int)
+    # parser.add_argument("--train_eps_wl", default=8, type=int)
+    # parser.add_argument("--num_wl", default=15, type=int) # CHANGE
+    # parser.add_argument("--batch_size", default=128, type=int) # can try increasing this a lot
+    # parser.add_argument("--attack_iters", default=20, type=int)
+    # parser.add_argument("--testing_restarts", default=10, type=int)
+    # parser.add_argument("--dataset_name", default='cifar10')
+    parser.add_argument("--config_file", default="Configs/wongCIFAR10Test.json")
 
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = get_args()
 
+    test_config = {}
+
+    with open(args.config_file) as f:
+        test_config = json.load(f)
+    
+
     if args.dataset == 'cifar10':
-        dataset = datasets.CIFAR10
+        test_config['dataset'] = datasets.CIFAR10
     elif args.dataset == 'cifar100':
-        dataset = datasets.CIFAR100
+        test_config['dataset'] = datasets.CIFAR100
 
     # TODO? change these to args?
-    weakLearnerType = WongBasedTrainingCIFAR10
-    val_attacks = [attack_pgd]
-    model_base = PreActResNet18
-    path = f'./models/{args.dataset}/{args.maxSamples}Eps{args.train_eps_nn}/'
+    test_config['weakLearnerType'] = WongBasedTrainingCIFAR10
+    test_config['val_attacks'] = [attack_pgd]
+    test_config['model_base'] = PreActResNet18
+    test_config['path' = f"./models/{test_config['dataset_name']}/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
+    test_config['attack_eps_ensemble'] = [0.3]
 
     ensemble = test_ensemble(path, val_attacks, args.num_wl, dataset, maxSamples=args.maxSamples,numsamples_train=args.numsamples_train,
                              numsamples_val=args.numsamples_val, attack_iters=args.attack_iters, restarts=args.testing_restarts,
                              train_eps_nn=args.train_eps_nn)
+
+    ensemble = test_ensemble(test_config)
