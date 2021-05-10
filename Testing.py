@@ -1,5 +1,6 @@
 from Boosting import Ensemble
 from WongBasedTraining import WongBasedTrainingCIFAR10
+from Architectures import PreActResNet18, PreActResNet18_100
 from AdversarialAttacks import attack_pgd
 from torchvision import datasets, transforms
 from datetime import datetime
@@ -15,9 +16,11 @@ import numpy as np
 """
 def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_train=1000, numsamples_val=1000, attack_eps_ensemble = [0.03], attack_iters=20, restarts=10, gradOptWeights=False):
     if dataset == datasets.CIFAR10:
+        model_base = PreActResNet18
         dataset_name = 'cifar10'
-    elif dataset == dataset.CIFAR100:
+    elif dataset == datasets.CIFAR100:
         dataset_name = 'cifar100'
+        model_base = PreActResNet18_100
     train_ds, test_ds = applyDSTrans(dataset)
     train_ds.targets = torch.tensor(np.array(train_ds.targets))
     test_ds.targets = torch.tensor(np.array(test_ds.targets))
@@ -42,7 +45,7 @@ def testEnsemble(path, attacks, numWL, dataset=datasets.CIFAR10, numsamples_trai
         wl.append(path + f'wl_{i}.pth')
     
     startTime = datetime.now()
-    ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTrainingCIFAR10, attack_eps=attack_eps_ensemble)
+    ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTrainingCIFAR10, attack_eps=attack_eps_ensemble, model_base=model_base)
     for i in range(numWL):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
         ensemble.addWeakLearner(wl[i], wlWeights[i])

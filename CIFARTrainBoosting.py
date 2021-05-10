@@ -75,7 +75,16 @@ if __name__ == '__main__':
     weakLearnerType = WongBasedTrainingCIFAR10
     val_attacks = [attack_pgd]
     
+    
     path = f'./models/{args.dataset}/{args.maxSamples}Eps{args.train_eps_nn}'
+    
+    
+#     config = {
+#         'num_wl': args.num_wl,
+#         'weakLearnerType': weakLearnerType,
+#         'dataset': dataset,
+        
+#     }
 
     ensemble = train_ensemble(num_wl=args.num_wl, maxSamples=args.maxSamples, dataset=dataset,weakLearnerType=weakLearnerType,
     val_attacks=val_attacks, train_eps_nn=args.train_eps_nn, model_base=model_base, attack_iters=args.attack_iters, restarts=args.training_valrestarts)

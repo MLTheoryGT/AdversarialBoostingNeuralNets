@@ -1,5 +1,5 @@
 from BaseModels import BaseNeuralNet
-from Architectures import PreActResNet18, WideResNet
+from Architectures import PreActResNet18, PreActResNet18_100, WideResNet
 from torchvision import datasets, transforms
 import torch
 import torch.nn as nn
@@ -31,6 +31,10 @@ class Ensemble(MetricPlotter, Validator):
         self.accuracies['wl_val'] = []
         self.attack_eps = attack_eps
         self.model_base = model_base
+        if model_base == PreActResNet18:
+            self.num_classes = 10
+        elif model_base == PreActResNet18_100:
+            self.num_classes = 100
         
         assert len(self.weakLearners) == 0
 
@@ -57,7 +61,9 @@ class Ensemble(MetricPlotter, Validator):
         if not isinstance(self.weakLearners[i], str):
             learner = self.weakLearners[i]
         else:
-            learner = self.weakLearnerType(self.model_base)
+            learner = self.weakLearnerType(model_base=self.model_base)
+#             print("learner model:", learner.model)
+#             print("model base:", self.model_base)
             learner.model.load_state_dict(torch.load(self.weakLearners[i]))
             learner.model = learner.model.to(torch.device('cuda:0'))
             learner.model.eval()
@@ -92,7 +98,7 @@ class Ensemble(MetricPlotter, Validator):
 #         print("calling modded predict")
 #         return prediction
     
-        return self.schapireContinuousPredict(X, 10)
+        return self.schapireContinuousPredict(X, self.num_classes)
 
     def schapirePredict(self, X, k):
         print("shouldn't be here")
