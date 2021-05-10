@@ -148,3 +148,8 @@ Steps to transform a row of the cost matrix:
   * 4 0 7
   * .37 0 .63
   * 0 1 0: bad
+
+# May 9
+
+- Fix bugs for running CIFAR100
+    - Output of the architecture should have 100 classes

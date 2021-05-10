@@ -115,6 +115,9 @@ class PreActResNet(nn.Module):
 def PreActResNet18():
     return PreActResNet(PreActBlock, [2,2,2,2])
 
+def PreActResNet18_100():
+    return PreActResNet(PreActBlock, [2,2,2,2], 100)
+
 # Source: https://github.com/xternalz/WideResNet-pytorch/blob/master/wideresnet.py
 
 

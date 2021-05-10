@@ -16,7 +16,7 @@ from utils import clamp
 import copy
 
 from utils import (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
-from utils import (cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
+from utils import (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
 
 
 class WongBasedTrainingCIFAR10(BaseNeuralNet):

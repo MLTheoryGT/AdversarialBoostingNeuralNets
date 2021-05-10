@@ -3,7 +3,7 @@ import torch
 from torchvision import datasets, transforms
 import numpy as np
 from WongBasedTraining import WongBasedTrainingCIFAR10
-from Architectures import PreActResNet18, WideResNet
+from Architectures import PreActResNet18, PreActResNet18_100, WideResNet
 import matplotlib.pyplot as plt
 import os
 from datetime import datetime
@@ -66,13 +66,15 @@ if __name__ == '__main__':
 
     if args.dataset == 'cifar10':
         dataset = datasets.CIFAR10
+        model_base = PreActResNet18
     elif args.dataset == 'cifar100':
         dataset = datasets.CIFAR100
+        model_base = PreActResNet18_100
 
     # TODO? change these to args?
     weakLearnerType = WongBasedTrainingCIFAR10
     val_attacks = [attack_pgd]
-    model_base = PreActResNet18
+    
     path = f'./models/{args.dataset}/{args.maxSamples}Eps{args.train_eps_nn}'
 
     ensemble = train_ensemble(num_wl=args.num_wl, maxSamples=args.maxSamples, dataset=dataset,weakLearnerType=weakLearnerType,
