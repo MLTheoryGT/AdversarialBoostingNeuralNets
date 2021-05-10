@@ -1,7 +1,9 @@
 {
     "num_samples_wl": 30000,
+    "num_wl": 15,
     "train_eps_wl": 8,
     "training_valrestarts": 1,
+    "dataset_name": "cifar10",
     "train_alpha_wl": 10,
     "lr_min_wl": 0,
     "lr_max_wl": 0.2,
@@ -16,5 +18,8 @@
     "momentum_wl": 0.9,
     "attack_iters_wl": 20,
     "batch_size_wl": 128,
-    "restarts_wl": 1
+    "restarts_wl": 1,
+    "training_method": "wong",
+    "adv_train_wl": true,
+    "prediction_weights_wl": false,
 }
