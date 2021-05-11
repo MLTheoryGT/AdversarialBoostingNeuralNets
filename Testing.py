@@ -36,7 +36,7 @@ def testEnsemble(config):
     
     wl = []
     wlWeights = []
-    with open(config['path'] + "/wl_weights.csv") as f:
+    with open(config['path'] + "wl_weights.csv") as f:
         for line in f:
             wlWeights = line.split(",")
             break

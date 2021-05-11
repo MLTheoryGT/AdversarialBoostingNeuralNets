@@ -99,11 +99,11 @@ class Ensemble(Validator):
 
     def predictUnnormalizedDataCIFAR10(self, X):
         X_norm = (X - cifar10_mu) / cifar10_std
-        self.schapireContinuousPredict(X_norm, self.num_classes)
+        return self.schapireContinuousPredict(X_norm, self.num_classes)
 
     def predictUnnormalizedDataCIFAR100(self, X):
         X_norm = (X - cifar100_mu) / cifar100_std
-        self.schapireContinuousPredict(X_norm, self.num_classes)
+        return self.schapireContinuousPredict(X_norm, self.num_classes)
 
 
     def schapirePredict(self, X, k):

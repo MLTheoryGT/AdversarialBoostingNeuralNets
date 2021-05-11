@@ -47,7 +47,7 @@ def SchapireWongMulticlassBoosting(config):
         print("Already exists, exiting")
         return
     else:
-        os.mkdirs(path_head)
+        os.mkdir(path_head)
     
     def gcLoop():
         print("-"*100)

@@ -23,12 +23,13 @@ epsilons = [0.127]
 # Training the ensemble
 
 def test_ensemble(test_config):
-    ensemble = testEnsemble(test_config)
-    
     attackStr = "attack_pgd"
     resultsPath = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/train_eps_{test_config['train_eps_wl']}/{attackStr}/"
     test_config['results_path'] = resultsPath
-    os.mkdirs(resultsPath)
+    if not os.path.exists(resultsPath):
+        os.mkdir(resultsPath)
+    ensemble = testEnsemble(test_config)
+    
     acc_file = resultsPath + f"acc_maxSamples_{test_config['num_samples_wl']}.png"
     adv_acc_file = resultsPath + f"adv_acc_maxSamples_{test_config['num_samples_wl']}.png"
     loss_file = resultsPath + f"loss_maxSamples_{test_config['num_samples_wl']}.png"
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     test_config['weak_learner_type'] = WongBasedTrainingCIFAR10
     test_config['val_attacks'] = [attack_pgd]
     test_config['model_base'] = PreActResNet18
-    test_config['path'] = f"./models/{test_config['dataset_name']}/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
+    test_config['path'] = f"./models/{test_config['training_method']}/{test_config['dataset_name']}/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
     # test_config['attack_eps_ensemble'] = [0.127]
 
     ensemble = test_ensemble(test_config)
