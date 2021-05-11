@@ -42,8 +42,8 @@ class PGDBasedTraining(BaseNeuralNet):
         model.train()
 
         opt = torch.optim.SGD(model.parameters(), lr=config["lr_max_wl"], momentum=config["momentum_wl"], weight_decay=config["weight_decay_wl"])
-        amp_args = dict(opt_level=config["opt_level"], loss_scale=config["loss_scale_wl"], verbosity=False)
-        if config["opt_level"] == 'O2':
+        amp_args = dict(opt_level=config["opt_level_wl"], loss_scale=config["loss_scale_wl"], verbosity=False)
+        if config["opt_level_wl"] == 'O2':
             amp_args['master_weights'] = config["master_weights_wl"]
         model, opt = amp.initialize(model, opt, **amp_args)
         criterion = nn.CrossEntropyLoss()

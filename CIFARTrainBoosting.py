@@ -3,6 +3,8 @@ import torch
 from torchvision import datasets, transforms
 import numpy as np
 from WongBasedTraining import WongBasedTrainingCIFAR10
+from PGDBasedTraining import PGDBasedTraining
+from TradesBasedTraining import TradesBasedTrainingCIFAR10
 from Architectures import PreActResNet18, PreActResNet18_100, WideResNet
 import matplotlib.pyplot as plt
 import os
@@ -51,7 +53,12 @@ if __name__ == '__main__':
         train_config['dataset'] = datasets.CIFAR100
         train_config['model_base'] = PreActResNet18_100
 
-    train_config['weakLearnerType'] = WongBasedTrainingCIFAR10
+    if train_config['training_method'] == 'wong':
+        train_config['weakLearnerType'] = WongBasedTrainingCIFAR10
+    elif train_config['training_method'] == 'pgd':
+        train_config['weakLearnerType'] = PGDBasedTraining
+    elif train_config['training_method'] == 'trades':
+        train_config['weakLearnerType'] = TradesBasedTraining
     train_config['val_attacks'] = [attack_pgd]
     train_config['attack_eps_wl'] = [0.127]
 

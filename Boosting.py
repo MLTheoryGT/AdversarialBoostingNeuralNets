@@ -41,7 +41,7 @@ def SchapireWongMulticlassBoosting(config):
     
     start = datetime.now()
     
-    path_head = f"./models/{config['dataset_name']}/{config['num_samples_wl']}Eps{config['train_eps_wl']}/"
+    path_head = f"./models/{config['training_method']}/{config['dataset_name']}/{config['num_samples_wl']}Eps{config['train_eps_wl']}/"
     print("path_head:", path_head)
     if os.path.exists(path_head):
         print("Already exists, exiting")
