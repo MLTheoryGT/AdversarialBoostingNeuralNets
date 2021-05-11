@@ -16,7 +16,7 @@
     "loss_scale_wl": 1.0,
     "delta_init_wl": "random",
     "momentum_wl": 0.9,
-    "attack_iters_wl": 20,
+    "attack_iters_val_wl": 20,
     "batch_size_wl": 128,
     "restarts_wl": 1,
     "training_method": "wong",

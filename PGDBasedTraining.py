@@ -42,10 +42,10 @@ class PGDBasedTraining(BaseNeuralNet):
         model.train()
 
         opt = torch.optim.SGD(model.parameters(), lr=config["lr_max_wl"], momentum=config["momentum_wl"], weight_decay=config["weight_decay_wl"])
-        amp_args = dict(opt_level=config["opt_level_wl"], loss_scale=config["loss_scale_wl"], verbosity=False)
-        if config["opt_level_wl"] == 'O2':
-            amp_args['master_weights'] = config["master_weights_wl"]
-        model, opt = amp.initialize(model, opt, **amp_args)
+        # amp_args = dict(opt_level=config["opt_level_wl"], loss_scale=config["loss_scale_wl"], verbosity=False)
+        # if config["opt_level_wl"] == 'O2':
+        #     amp_args['master_weights'] = config["master_weights_wl"]
+        # model, opt = amp.initialize(model, opt, **amp_args)
         criterion = nn.CrossEntropyLoss()
 
         epoch_size = len(train_loader.dataset)
@@ -77,13 +77,14 @@ class PGDBasedTraining(BaseNeuralNet):
                     delta.data = clamp(delta, lower_limit - X, upper_limit - X)
                 delta.requires_grad = True
                 if i % 100 == 99:
-                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, train_X=X, train_y=y, attack_iters=config["attack_iters"], 
-                                            restarts=config["restarts"], val_attacks=config["val_attacks"], dataset_name=config["dataset_name"])
+                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, train_X=X, train_y=y, attack_iters=config["attack_iters_val_wl"], 
+                                            restarts=config["training_valrestarts"], val_attacks=config["val_attacks"], dataset_name=config["dataset_name"])
                 for _ in range(config["attack_iters_wl"]):
                     output = model(X + delta)
                     loss = criterion(output, y)
-                    with amp.scale_loss(loss, opt) as scaled_loss:
-                        scaled_loss.backward()
+                    # with amp.scale_loss(loss, opt) as scaled_loss:
+                    #     scaled_loss.backward()
+                    loss.backward()
                     grad = delta.grad.detach()
                     delta.data = clamp(delta + alpha * torch.sign(grad), -epsilon, epsilon)
                     delta.data = clamp(delta, lower_limit - X, upper_limit - X)
@@ -92,8 +93,9 @@ class PGDBasedTraining(BaseNeuralNet):
                 output = model(X + delta)
                 loss = criterion(output, y)
                 opt.zero_grad()
-                with amp.scale_loss(loss, opt) as scaled_loss:
-                    scaled_loss.backward()
+                # with amp.scale_loss(loss, opt) as scaled_loss:
+                #     scaled_loss.backward()
+                loss.backward()
                 opt.step()
                 train_loss += loss.item() * y.size(0)
                 train_acc += (output.max(1)[1] == y).sum().item()

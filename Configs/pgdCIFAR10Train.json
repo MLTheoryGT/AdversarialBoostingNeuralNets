@@ -1,10 +1,10 @@
 {
-    "num_samples_wl": 30000,
-    "num_wl": 3,
+    "num_samples_wl": 30000, //change
+    "num_wl": 3, //change
     "train_eps_wl": 8,
     "training_valrestarts": 1,
     "dataset_name": "cifar10",
-    "train_alpha_wl": 10,
+    "train_alpha_wl": 2,
     "lr_min_wl": 0,
     "lr_max_wl": 0.2,
     "weight_decay_wl": 5e-4,
@@ -16,7 +16,8 @@
     "loss_scale_wl": 1.0,
     "delta_init_wl": "random",
     "momentum_wl": 0.9,
-    "attack_iters_wl": 20,
+    "attack_iters_wl": 7,
+    "attack_iters_val_wl": 20,
     "batch_size_wl": 128,
     "restarts_wl": 1,
     "training_method": "pgd",
@@ -24,3 +25,26 @@
     "prediction_weights_wl": false,
     "lr_schedule_wl": "cyclic"
 }
+// parser.add_argument('--batch-size', default=128, type=int)
+// parser.add_argument('--data-dir', default='../../cifar-data', type=str)
+// parser.add_argument('--epochs', default=15, type=int)
+// parser.add_argument('--lr-schedule', default='cyclic', type=str, choices=['cyclic', 'multistep'])
+// parser.add_argument('--lr-min', default=0., type=float)
+// parser.add_argument('--lr-max', default=0.2, type=float)
+// parser.add_argument('--weight-decay', default=5e-4, type=float)
+// parser.add_argument('--momentum', default=0.9, type=float)
+// parser.add_argument('--epsilon', default=8, type=int)
+// parser.add_argument('--attack-iters', default=7, type=int, help='Attack iterations')
+// parser.add_argument('--restarts', default=1, type=int)
+// parser.add_argument('--alpha', default=2, type=int, help='Step size')
+// parser.add_argument('--delta-init', default='random', choices=['zero', 'random'],
+//     help='Perturbation initialization method')
+// parser.add_argument('--out-dir', default='train_pgd_output', type=str, help='Output directory')
+// parser.add_argument('--seed', default=0, type=int, help='Random seed')
+// parser.add_argument('--opt-level', default='O2', type=str, choices=['O0', 'O1', 'O2'],
+//     help='O0 is FP32 training, O1 is Mixed Precision, and O2 is "Almost FP16" Mixed Precision')
+// parser.add_argument('--loss-scale', default='1.0', type=str, choices=['1.0', 'dynamic'],
+//     help='If loss_scale is "dynamic", adaptively adjust the loss scale over time')
+// parser.add_argument('--master-weights', action='store_true',
+//     help='Maintain FP32 master weights to accompany any FP16 model weights, not applicable for O1 opt level')
+// return parser.parse_args()
