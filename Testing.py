@@ -54,7 +54,7 @@ def testEnsemble(config):
 #         ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)
         
-        ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train=config['num_samples_train'], numsamples_val=config['num_samples_val'], val_attacks=config['val_attacks'], attack_iters=config['testing_attack_iters'], dataset_name=config['dataset_name'])
+        ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train=config['num_samples_train'], numsamples_val=config['num_samples_val'], val_attacks=config['val_attacks'], attack_iters=config['testing_attack_iters'], dataset_name=config['dataset_name'], restarts=config['testing_restarts'])
         print("ensemble accuracies:", ensemble.accuracies)
 
     return ensemble

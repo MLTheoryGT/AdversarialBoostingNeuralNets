@@ -1,7 +1,7 @@
 {
     "num_samples_wl": 30000,
-    "num_wl": 15,
-    "train_eps_wl": 3,
+    "num_wl": 3,
+    "train_eps_wl": 8,
     "training_valrestarts": 1,
     "dataset_name": "cifar100",
     "train_alpha_wl": 10,

@@ -16,7 +16,7 @@ from utils import (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu,
 
 
 class WongBasedTrainingCIFAR10(BaseNeuralNet):
-    def __init__(self, attack_eps, model_base):
+    def __init__(self, model_base, attack_eps):
         super().__init__(model_base, attack_eps)
     
     def fit(self, train_loader, test_loader, config):
