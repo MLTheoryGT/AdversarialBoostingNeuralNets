@@ -6,7 +6,6 @@ from utils import clamp
 from BaseModels import BaseNeuralNet
 from torchvision import datasets
 cuda = torch.device('cuda:0')
-from apex import amp
 from utils import (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
 from utils import (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
 
@@ -71,7 +70,7 @@ class PGDBasedTraining(BaseNeuralNet):
                 currSamples += train_loader.batch_size 
                 X, y = X.cuda(), y.cuda()
                 delta = torch.zeros_like(X).cuda()
-                if config["delta_init"] == 'random':
+                if config["delta_init_wl"] == 'random':
                     for i in range(len(epsilon)):
                         delta[:, i, :, :].uniform_(-epsilon[i][0][0].item(), epsilon[i][0][0].item())
                     delta.data = clamp(delta, lower_limit - X, upper_limit - X)
@@ -103,7 +102,7 @@ class PGDBasedTraining(BaseNeuralNet):
                 scheduler.step()
             epoch_time = time.time()
             lr = scheduler.get_lr()[0]
-            print('%d \t %.1f \t \t %.4f \t %.4f \t %.4f', epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n)
+            print('%d \t %.1f \t \t %.4f \t %.4f \t %.4f'%(epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n))
         train_time = time.time()
         # torch.save(model.state_dict(), os.path.join(args.out_dir, 'model.pth'))
         print('Total train time: %.4f minutes', (train_time - start_train_time)/60)
