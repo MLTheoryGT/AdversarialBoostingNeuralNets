@@ -66,10 +66,9 @@ class TradesBasedTrainingCIFAR10(BaseNeuralNet):
                     x_natural=X,
                     y=y,
                     optimizer=opt,
-                    step_size=config["step_size_trades_wl"],
-                    epsilon=config["epsilon_trades_wl"],
-                    perturb_steps=["perturb_steps_trades_wl"],
-                    beta=config["beta_trades_wl"],
-			        distance=config["distance_trades_wl"])
+                    step_size=config["step_size_wl"],
+                    epsilon=config["train_eps_wl"],
+                    perturb_steps=config["num_steps_wl"],
+                    beta=config["beta_wl"])
                 loss.backward()
                 opt.step()
