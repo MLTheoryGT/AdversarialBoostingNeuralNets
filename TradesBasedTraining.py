@@ -7,6 +7,18 @@ cuda = torch.device('cuda:0')
 from utils import (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
 from utils import (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
 
+def adjust_learning_rate(optimizer, epoch, config):
+    """decrease the learning rate"""
+    lr = config["lr_wl"]
+    if epoch >= 75:
+        lr = config["lr_wl"] * 0.1
+    if epoch >= 90:
+        lr = config["lr_wl"] * 0.01
+    if epoch >= 100:
+        lr = config["lr_wl"] * 0.001
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
 
 class TradesBasedTrainingCIFAR10(BaseNeuralNet):
     def __init__(self, attack_eps, model_base):
@@ -32,7 +44,7 @@ class TradesBasedTrainingCIFAR10(BaseNeuralNet):
         model = self.model
         model.train()
 
-        opt = torch.optim.SGD(model.parameters(), lr=config['lr_max_wl'], momentum=config['momentum_wl'], weight_decay=config['weight_decay_wl'])
+        opt = torch.optim.SGD(model.parameters(), lr=config['lr_wl'], momentum=config['momentum_wl'], weight_decay=config['weight_decay_wl'])
         
         epoch_size = len(train_loader.dataset)
         num_epochs = max(1, config["num_samples_wl"] // epoch_size)
@@ -42,13 +54,14 @@ class TradesBasedTrainingCIFAR10(BaseNeuralNet):
         currSamples = 0 # added
         for epoch in range(num_epochs):
             print("Epoch: ", epoch)
+            adjust_learning_rate(opt, epoch, config)
             for i, data in enumerate(train_loader):
                 X, y = data[0], data[1]
                 currSamples += train_loader.batch_size # added
                 X, y = X.cuda(), y.cuda()
                 if i % 100 == 99:
-                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, train_X=X, train_y=y, attack_iters=config["attack_iters"], 
-                                            restarts=config["restarts"], val_attacks=config["val_attacks"], dataset_name=config["dataset_name"])
+                    self.record_accuracies(currSamples, val_X=val_X, val_y=val_y, train_X=X, train_y=y, attack_iters=config["attack_iters_val_wl"], 
+                                            restarts=config["training_valrestarts"], val_attacks=config["val_attacks"], dataset_name=config["dataset_name"])
                 loss = trades_loss(model=model,
                     x_natural=X,
                     y=y,

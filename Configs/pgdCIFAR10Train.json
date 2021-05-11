@@ -23,5 +23,6 @@
     "training_method": "pgd",
     "adv_train_wl": true,
     "prediction_weights_wl": false,
-    "lr_schedule_wl": "cyclic"
+    "lr_schedule_wl": "cyclic",
+    "attack_eps_wl": [0.127]
 }

@@ -15,14 +15,14 @@ from datetime import datetime
 from AdversarialAttacks import attack_pgd
 
 class Ensemble(Validator):
-    def __init__(self, weakLearnerType, attack_eps, model_base, weakLearners=[], weakLearnerWeights=[]):
+    def __init__(self, weak_learner_type, attack_eps, model_base, weakLearners=[], weakLearnerWeights=[]):
         """
         """
         Validator.__init__(self, 'Number of weak learners', attack_eps)
         self.weakLearners = weakLearners
         self.weakLearnerWeights = weakLearnerWeights
         self.weakLearerWeightsTensor = torch.tensor(weakLearnerWeights, requires_grad=False).unsqueeze(1).float().cuda()
-        self.weakLearnerType = weakLearnerType
+        self.weak_learner_type = weak_learner_type
         self.accuracies['wl_train'] = []
         self.accuracies['wl_val'] = []
         self.attack_eps = attack_eps
@@ -57,7 +57,7 @@ class Ensemble(Validator):
         if not isinstance(self.weakLearners[i], str):
             learner = self.weakLearners[i]
         else:
-            learner = self.weakLearnerType(model_base=self.model_base, attack_eps=self.attack_eps)
+            learner = self.weak_learner_type(model_base=self.model_base, attack_eps=self.attack_eps)
 #             print("learner model:", learner.model)
 #             print("model base:", self.model_base)
             learner.model.load_state_dict(torch.load(self.weakLearners[i]))
@@ -86,7 +86,7 @@ class Ensemble(Validator):
 
     def predict(self, X):
         # We hope to deprecate schapirePredict since we shouldn't need anymore
-#         learner = self.weakLearnerType()
+#         learner = self.weak_learner_type()
 #         learner.model.load_state_dict(torch.load(self.weakLearners[0]))
 #         learner.model = learner.model.to(torch.device('cuda:0'))
 #         learner.model.eval()

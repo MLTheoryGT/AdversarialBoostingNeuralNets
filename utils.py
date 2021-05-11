@@ -25,10 +25,11 @@ def clamp(X, lower_limit, upper_limit):
 """
     Takes in a pytorch dataset object and returns train/test datasets after transformations
 """
-def applyDSTrans(dataset):
+def applyDSTrans(config):
     train_transforms = []
     test_transforms = []
     
+    dataset = config["dataset"]
     if dataset == datasets.CIFAR10 or dataset==datasets.CIFAR100:
         for elt in [transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip()]:
             train_transforms.append(elt)
@@ -45,13 +46,14 @@ def applyDSTrans(dataset):
     
     print(cifar10_mu_tup, cifar10_std_tup)
     
-    if dataset == datasets.CIFAR10:
-        print("cifar10")
+    if dataset == datasets.CIFAR10 and config["training_method"] != "trades":
+        print("Normalized DS")
         norm = transforms.Normalize(cifar10_mu_tup, cifar10_std_tup)
         train_transforms.append(norm)
         test_transforms.append(norm)
 
-    if dataset == datasets.CIFAR100:
+    if dataset == datasets.CIFAR100 and config["training_method"] != "trades":
+        print("Normalized DS")
         norm = transforms.Normalize(cifar100_mu_tup, cifar100_std_tup)
         train_transforms.append(norm)
         test_transforms.append(norm)

@@ -202,3 +202,8 @@ class WideResNet(nn.Module):
 def WideResNet70_18():
     return WideResNet(depth=70, widen_factor=18)
 
+def WideResNet34_10_10():
+    return WideResNet(depth=34, num_classes=10, widen_factor=10, dropRate=0.0)
+
+def WideResNet34_100_10():
+    return WideResNet(depth=34, num_classes=100, widen_factor=10, dropRate=0.0)

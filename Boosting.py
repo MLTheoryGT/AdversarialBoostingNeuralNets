@@ -22,7 +22,7 @@ def SchapireWongMulticlassBoosting(config):
     print("attack_eps_wl: ", config['attack_eps_wl'])
     print("train_eps_wl: ", config['train_eps_wl'])
     
-    train_ds, test_ds = applyDSTrans(config['dataset'])
+    train_ds, test_ds = applyDSTrans(config)
     train_ds.targets = torch.tensor(np.array(train_ds.targets))
     test_ds.targets = torch.tensor(np.array(test_ds.targets))
 
@@ -37,7 +37,7 @@ def SchapireWongMulticlassBoosting(config):
 
     f = np.zeros((m, k))
     
-    ensemble = Ensemble(weakLearnerType=config['weakLearnerType'], attack_eps=[], model_base=config['model_base'], weakLearners=[])
+    ensemble = Ensemble(weak_learner_type=config['weak_learner_type'], attack_eps=[], model_base=config['model_base'], weakLearners=[])
     
     start = datetime.now()
     
@@ -67,7 +67,7 @@ def SchapireWongMulticlassBoosting(config):
         train_loader = torch.utils.data.DataLoader(train_ds, sampler=train_sampler, batch_size=config['batch_size_wl'])
         
         # Fit WL on weighted subset of data
-        h_i = config['weakLearnerType'](attack_eps=config['attack_eps_wl'], model_base=config['model_base'])
+        h_i = config['weak_learner_type'](attack_eps=config['attack_eps_wl'], model_base=config['model_base'])
         
         h_i.fit(train_loader, test_loader, config)
 

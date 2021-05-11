@@ -21,7 +21,7 @@ def testEnsemble(config):
         model_base = PreActResNet18
     elif config['dataset'] == datasets.CIFAR100:
         model_base = PreActResNet18_100
-    train_ds, test_ds = applyDSTrans(config['dataset'])
+    train_ds, test_ds = applyDSTrans(config)
     train_ds.targets = torch.tensor(np.array(train_ds.targets))
     test_ds.targets = torch.tensor(np.array(test_ds.targets))
     
@@ -45,7 +45,7 @@ def testEnsemble(config):
         wl.append(config['path'] + f'wl_{i}.pth')
     
     startTime = datetime.now()
-    ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weakLearnerType=WongBasedTrainingCIFAR10, attack_eps=config['attack_eps_ensemble'], model_base=model_base)
+    ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weak_learner_type=WongBasedTrainingCIFAR10, attack_eps=config['attack_eps_ensemble'], model_base=model_base)
     for i in range(config['num_wl']):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
         ensemble.addWeakLearner(wl[i], wlWeights[i])

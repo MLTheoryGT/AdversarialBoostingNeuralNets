@@ -22,14 +22,19 @@ epsilons = [0.127]
 
 # Training the ensemble
 
-def test_ensemble(test_config):
-    ensemble = testEnsemble(test_config)
-    
+def test_ensemble(path, attacks, num_wl, dataset, maxSamples=750000, numsamples_train=200, numsamples_val=1500, attack_eps_ensemble=epsilons, gradOptWeights=False,
+                  attack_iters=20, restarts=1, train_eps_nn=8):
+    ensemble = testEnsemble(path, attacks, num_wl, dataset=dataset, numsamples_train=numsamples_train, numsamples_val=numsamples_val, 
+                            attack_eps_ensemble=attack_eps_ensemble, gradOptWeights=gradOptWeights, attack_iters=attack_iters, restarts=restarts)
+    if dataset == datasets.CIFAR10:
+        dataset_name = 'cifar10'
+    elif dataset == datasets.CIFAR100:
+        dataset_name = 'cifar100'
     attackStr = "attack_pgd"
-    resultsPath = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/train_eps_{test_config['train_eps_wl']}/{attackStr}/"
-    acc_file = resultsPath + f"acc_maxSamples_{test_config['num_samples_wl']}.png"
-    adv_acc_file = resultsPath + f"adv_acc_maxSamples_{test_config['num_samples_wl']}.png"
-    loss_file = resultsPath + f"loss_maxSamples_{test_config['num_samples_wl']}.png"
+    resultsPath = f'results/plots/{dataset_name}/train_eps_{train_eps_nn}/{attackStr}/'
+    acc_file = resultsPath + f'acc_maxSamples_{maxSamples}.png'
+    adv_acc_file = resultsPath + f'adv_acc_maxSamples_{maxSamples}.png'
+    loss_file = resultsPath + f'loss_maxSamples_{maxSamples}.png'
     ensemble.plot_accuracies(acc_file)
     ensemble.plot_loss(loss_file)
     ensemble.plot_adversarial_accuracies(adv_acc_file)
@@ -60,16 +65,20 @@ if __name__ == '__main__':
         test_config = json.load(f)
     
 
-    if test_config['dataset_name'] == 'cifar10':
+    if args.dataset == 'cifar10':
         test_config['dataset'] = datasets.CIFAR10
-    elif test_config['dataset_name'] == 'cifar100':
+    elif args.dataset == 'cifar100':
         test_config['dataset'] = datasets.CIFAR100
 
     # TODO? change these to args?
-    test_config['weakLearnerType'] = WongBasedTrainingCIFAR10
+    test_config['weak_learner_type'] = WongBasedTrainingCIFAR10
     test_config['val_attacks'] = [attack_pgd]
     test_config['model_base'] = PreActResNet18
-    test_config['path'] = f"./models/{test_config['dataset_name']}/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
-    test_config['attack_eps_ensemble'] = [0.127]
+    test_config['path' = f"./models/{test_config['dataset_name']}/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
+    # test_config['attack_eps_ensemble'] = [0.127]
+
+    ensemble = test_ensemble(path, val_attacks, args.num_wl, dataset, maxSamples=args.maxSamples,numsamples_train=args.numsamples_train,
+                             numsamples_val=args.numsamples_val, attack_iters=args.attack_iters, restarts=args.testing_restarts,
+                             train_eps_nn=args.train_eps_nn)
 
     ensemble = test_ensemble(test_config)

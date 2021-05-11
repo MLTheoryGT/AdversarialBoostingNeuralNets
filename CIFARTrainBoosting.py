@@ -5,7 +5,7 @@ import numpy as np
 from WongBasedTraining import WongBasedTrainingCIFAR10
 from PGDBasedTraining import PGDBasedTraining
 from TradesBasedTraining import TradesBasedTrainingCIFAR10
-from Architectures import PreActResNet18, PreActResNet18_100, WideResNet
+from Architectures import PreActResNet18, PreActResNet18_100, WideResNet, WideResNet34_10_10, WideResNet34_100_10
 import matplotlib.pyplot as plt
 import os
 from datetime import datetime
@@ -53,16 +53,17 @@ if __name__ == '__main__':
         train_config['dataset'] = datasets.CIFAR100
         train_config['model_base'] = PreActResNet18_100
 
+    if train_config["training_method"] == "trades" and train_config["dataset_name"]=="cifar10":
+        train_config["model_base"] = WideResNet34_10_10
+    elif train_config["training_method"] == "trades" and train_config["dataset_name"] == "cifar100":
+        train_config["model_base"] = WideResNet34_100_10
+
     if train_config['training_method'] == 'wong':
-        train_config['weakLearnerType'] = WongBasedTrainingCIFAR10
+        train_config['weak_learner_type'] = WongBasedTrainingCIFAR10
     elif train_config['training_method'] == 'pgd':
-        train_config['weakLearnerType'] = PGDBasedTraining
+        train_config['weak_learner_type'] = PGDBasedTraining
     elif train_config['training_method'] == 'trades':
-        train_config['weakLearnerType'] = TradesBasedTraining
+        train_config['weak_learner_type'] = TradesBasedTrainingCIFAR10
     train_config['val_attacks'] = [attack_pgd]
-    train_config['attack_eps_wl'] = [0.127]
 
     ensemble = train_ensemble(train_config)
-
-#     ensemble = train_ensemble(num_wl=args.num_wl, maxSamples=args.maxSamples, dataset=dataset,weakLearnerType=weakLearnerType,
-#     val_attacks=val_attacks, train_eps_nn=args.train_eps_nn, model_base=model_base, attack_iters=args.attack_iters, restarts=args.training_valrestarts)
