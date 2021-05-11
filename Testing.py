@@ -7,6 +7,8 @@ from datetime import datetime
 import torch
 from utils import applyDSTrans
 import numpy as np
+from autoattack import AutoAttack
+
 
 """
     path: should contain wl number of .pth models named cifar10_wl_i.pth
@@ -45,7 +47,21 @@ def testEnsemble(config):
         wl.append(config['path'] + f'wl_{i}.pth')
     
     startTime = datetime.now()
+
     ensemble = Ensemble(weakLearners=[], weakLearnerWeights=[], weak_learner_type=WongBasedTrainingCIFAR10, attack_eps=config['attack_eps_ensemble'], model_base=model_base)
+    if config["dataset_name"] == "cifar10":
+        forwardPass = ensemble.predictUnnormalizedDataCIFAR10
+    elif config["dataset_name"] == "cifar100":
+        forwardPass = ensemble.predictUnnormalizedDataCIFAR100
+    
+    if config["training_method"] == "trades":
+        forwardPass = ensemble.predict
+    
+    l = [x for (x, y) in test_loader_mini]
+    x_test = torch.cat(l, 0)
+    l = [y for (x, y) in test_loader_mini]
+    y_test = torch.cat(l, 0)
+
     for i in range(config['num_wl']):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
         ensemble.addWeakLearner(wl[i], wlWeights[i])
@@ -53,8 +69,11 @@ def testEnsemble(config):
 #         ensemble.gradOptWeights(train_loader_mini)
 #         ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)
-        
-        ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train=config['num_samples_train'], numsamples_val=config['num_samples_val'], val_attacks=config['val_attacks'], attack_iters=config['testing_attack_iters'], dataset_name=config['dataset_name'], restarts=config['testing_restarts'])
-        print("ensemble accuracies:", ensemble.accuracies)
+        if config["auto_attack"]:
+            adversary = AutoAttack(forwardPass, norm='Linf', eps=config["attack_eps_ensemble"][0], version='standard')
+            x_adv = adversary.run_standard_evaluation(x_test, y_test, bs=config["test_batch_size"])
+        else:
+            ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train=config['num_samples_train'], numsamples_val=config['num_samples_val'], val_attacks=config['val_attacks'], attack_iters=config['testing_attack_iters'], dataset_name=config['dataset_name'], restarts=config['testing_restarts'])
+            print("ensemble accuracies:", ensemble.accuracies)
 
     return ensemble

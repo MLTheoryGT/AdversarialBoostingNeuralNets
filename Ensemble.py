@@ -13,6 +13,7 @@ import gc
 import sys
 from datetime import datetime
 from AdversarialAttacks import attack_pgd
+from utils import (cifar10_mu, cifar10_std, cifar100_mu, cifar100_std)
 
 class Ensemble(Validator):
     def __init__(self, weak_learner_type, attack_eps, model_base, weakLearners=[], weakLearnerWeights=[]):
@@ -95,6 +96,15 @@ class Ensemble(Validator):
 #         return prediction
     
         return self.schapireContinuousPredict(X, self.num_classes)
+
+    def predictUnnormalizedDataCIFAR10(self, X):
+        X_norm = (X - cifar10_mu) / cifar10_std
+        self.schapireContinuousPredict(X_norm, self.num_classes)
+
+    def predictUnnormalizedDataCIFAR100(self, X):
+        X_norm = (X - cifar100_mu) / cifar100_std
+        self.schapireContinuousPredict(X_norm, self.num_classes)
+
 
     def schapirePredict(self, X, k):
         print("shouldn't be here")
