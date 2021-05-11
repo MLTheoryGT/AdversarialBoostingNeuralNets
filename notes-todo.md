@@ -153,3 +153,18 @@ Steps to transform a row of the cost matrix:
 
 - Fix bugs for running CIFAR100
     - Output of the architecture should have 100 classes
+    
+# May 11
+
+Things to do
+- Robustbench:
+    - CIFAR10 (Wong, Trades)
+- Non-adversarial results
+    - Wong
+- Hyperparam tuning
+    - Weak Learner Hyperparams:
+        - CIFAR100 w/ Wong (us)
+    - Ensemble Hyperparams
+        - Wong ? (us) 
+        - Trades, PGD ? (Pranjal)
+- Compare with N independently trained models
