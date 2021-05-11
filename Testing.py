@@ -70,7 +70,8 @@ def testEnsemble(config):
 #         ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)
         if config["auto_attack"]:
-            adversary = AutoAttack(forwardPass, norm='Linf', eps=config["attack_eps_ensemble"][0], version='standard')
+            # NOTE: hardcoded eps=0.031
+            adversary = AutoAttack(forwardPass, norm='Linf', eps=0.031, version='standard')
             x_adv = adversary.run_standard_evaluation(x_test, y_test, bs=config["test_batch_size"])
         else:
             ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train=config['num_samples_train'], numsamples_val=config['num_samples_val'], val_attacks=config['val_attacks'], attack_iters=config['testing_attack_iters'], dataset_name=config['dataset_name'], restarts=config['testing_restarts'])
