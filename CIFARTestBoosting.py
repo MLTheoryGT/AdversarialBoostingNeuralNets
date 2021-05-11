@@ -27,6 +27,7 @@ def test_ensemble(test_config):
     
     attackStr = "attack_pgd"
     resultsPath = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/train_eps_{test_config['train_eps_wl']}/{attackStr}/"
+    test_config['results_path'] = resultsPath
     os.mkdirs(resultsPath)
     acc_file = resultsPath + f"acc_maxSamples_{test_config['num_samples_wl']}.png"
     adv_acc_file = resultsPath + f"adv_acc_maxSamples_{test_config['num_samples_wl']}.png"
