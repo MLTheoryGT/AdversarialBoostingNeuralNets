@@ -58,8 +58,8 @@ def applyDSTrans(config):
         train_transforms.append(norm)
         test_transforms.append(norm)
                 
-    assert(len(train_transforms) == 4)
-    assert(len(test_transforms) == 2)
+#     assert(len(train_transforms) == 4)
+#     assert(len(test_transforms) == 2)
 
     train_ds = dataset('./data', train=True, download=True, transform=transforms.Compose(train_transforms))
     test_ds = dataset('./data', train=False, download=True, transform=transforms.Compose(test_transforms))

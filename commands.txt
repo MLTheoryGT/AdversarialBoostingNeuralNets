@@ -18,3 +18,7 @@ python3 CIFARTrainBoosting.py --config_file Configs/pgdCIFAR10Train.json
 Testing:
 
 python3 CIFARTestBoosting.py --config_file Configs/pgdCIFAR10Test.json
+
+Trades Training:
+
+python3 CIFARTrainBoosting.py --config_file Configs/tradesCIFAR10Train.json
