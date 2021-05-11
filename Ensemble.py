@@ -7,7 +7,6 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from WongBasedTraining import WongBasedTrainingCIFAR10
-from pytorch_memlab import LineProfiler 
 from BaseModels import Validator
 import torch.cuda as cutorch
 import gc
@@ -58,7 +57,7 @@ class Ensemble(Validator):
         if not isinstance(self.weakLearners[i], str):
             learner = self.weakLearners[i]
         else:
-            learner = self.weakLearnerType(model_base=self.model_base)
+            learner = self.weakLearnerType(model_base=self.model_base, attack_eps=self.attack_eps)
 #             print("learner model:", learner.model)
 #             print("model base:", self.model_base)
             learner.model.load_state_dict(torch.load(self.weakLearners[i]))
