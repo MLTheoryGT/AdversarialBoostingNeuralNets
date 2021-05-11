@@ -14,3 +14,7 @@ PGD Training:
 Training:
 
 python3 CIFARTrainBoosting.py --config_file Configs/pgdCIFAR10Train.json
+
+Testing:
+
+python3 CIFARTestBoosting.py --config_file Configs/pgdCIFAR10Test.json
