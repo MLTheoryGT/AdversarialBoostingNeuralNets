@@ -1,3 +1,9 @@
+Wong CIFAR10
+
+Testing:
+
+python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR10Test.json
+
 Running CIFAR100:
 
 Training (maxSamples 750K)
