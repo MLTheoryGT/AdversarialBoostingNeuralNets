@@ -30,7 +30,7 @@ def testEnsemble(config):
     
     #mini loaders for ensemble
     # @Arvind, I think you may be able to change the batch size here
-    test_loader_mini = torch.utils.data.DataLoader(test_ds, batch_size=config['test_batch_size'], shuffle=False) #Note: change this to True when using a subset
+    test_loader_mini = torch.utils.data.DataLoader(test_ds, batch_size=config['test_batch_size'], shuffle=True) #Note: change this to True when using a subset
     train_loader_mini = torch.utils.data.DataLoader(train_ds,
         batch_size=config['train_batch_size'], shuffle=True) #change to True?
     
