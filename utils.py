@@ -46,13 +46,13 @@ def applyDSTrans(config):
     
     print(cifar10_mu_tup, cifar10_std_tup)
     
-    if dataset == datasets.CIFAR10 and config["training_method"] != "trades" and not config['auto_attack']:
+    if dataset == datasets.CIFAR10 and config["training_method"] != "trades" and not config.get('auto_attack', False):
         print("Normalized DS")
         norm = transforms.Normalize(cifar10_mu_tup, cifar10_std_tup)
         train_transforms.append(norm)
         test_transforms.append(norm)
 
-    if dataset == datasets.CIFAR100 and config["training_method"] != "trades" and not config['auto_attack']:
+    if dataset == datasets.CIFAR100 and config["training_method"] != "trades" and not config.get('auto_attack', False):
         print("Normalized DS")
         norm = transforms.Normalize(cifar100_mu_tup, cifar100_std_tup)
         train_transforms.append(norm)

@@ -21,6 +21,8 @@ import os
 def SchapireWongMulticlassBoosting(config):
     print("attack_eps_wl: ", config['attack_eps_wl'])
     print("train_eps_wl: ", config['train_eps_wl'])
+    if config["train_eps_wl"] == 0:
+        print("Non adv training...")
     
     train_ds, test_ds = applyDSTrans(config)
     train_ds.targets = torch.tensor(np.array(train_ds.targets))
@@ -92,7 +94,10 @@ def SchapireWongMulticlassBoosting(config):
         for advCounter, data in enumerate(train_loader_default):
             X = data[0].cuda()
             y = data[1].cuda()
-            delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1, attack_iters=20)
+            if config["train_eps_wl"] == 0:
+                delta = 0
+            else:
+                delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1, attack_iters=20)
 #             delta = attack_fgsm(X, y, config['attack_eps_wl'][0], h_i.predict)
             predictions = h_i.predict(X + delta).argmax(axis=1)
             indices = predictions.detach().int().cpu().numpy()
