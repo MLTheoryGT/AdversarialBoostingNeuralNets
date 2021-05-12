@@ -58,9 +58,10 @@ def testEnsemble(config):
         forwardPass = ensemble.predict
     
     num_batches = 8
-    l = [x for (x, y) in test_loader_mini]
+    xys = [(x, y) for (x, y) in test_loader_mini]
+    l = [x for (x, y) in xys]
     x_test = torch.cat(l[:num_batches], 0)
-    l = [y for (x, y) in test_loader_mini]
+    l = [y for (x, y) in xys]
     y_test = torch.cat(l[:num_batches], 0)
 
     for i in range(config['num_wl']):
