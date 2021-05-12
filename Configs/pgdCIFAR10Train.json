@@ -1,6 +1,6 @@
 {
-    "num_samples_wl": 30000,
-    "num_wl": 3,
+    "num_samples_wl": 750000,
+    "num_wl": 10,
     "train_eps_wl": 8,
     "training_valrestarts": 1,
     "dataset_name": "cifar10",
