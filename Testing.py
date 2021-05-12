@@ -57,10 +57,11 @@ def testEnsemble(config):
     if config["training_method"] == "trades":
         forwardPass = ensemble.predict
     
+    num_batches = 8
     l = [x for (x, y) in test_loader_mini]
-    x_test = torch.cat(l, 0)
+    x_test = torch.cat(l[:num_batches], 0)
     l = [y for (x, y) in test_loader_mini]
-    y_test = torch.cat(l, 0)
+    y_test = torch.cat(l[:num_batches], 0)
 
     for i in range(config['num_wl']):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
