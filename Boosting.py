@@ -92,8 +92,8 @@ def SchapireWongMulticlassBoosting(config):
         for advCounter, data in enumerate(train_loader_default):
             X = data[0].cuda()
             y = data[1].cuda()
-#             delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1, attack_iters=20)
-            delta = attack_fgsm(X, y, config['attack_eps_wl'][0], h_i.predict)
+            delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1, attack_iters=20)
+#             delta = attack_fgsm(X, y, config['attack_eps_wl'][0], h_i.predict)
             predictions = h_i.predict(X + delta).argmax(axis=1)
             indices = predictions.detach().int().cpu().numpy()
             upper_bound = min(len(train_loader_default.dataset), (advCounter + 1)*advBatchSize)
