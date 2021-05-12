@@ -279,6 +279,3 @@ square - 18/33 - 0 out of 128 successfully perturbed
 square - 19/33 - 0 out of 128 successfully perturbed
 square - 20/33 - 0 out of 128 successfully perturbed
 square - 21/33 - 0 out of 128 successfully perturbed
-square - 22/33 - 0 out of 128 successfully perturbed
-square - 23/33 - 0 out of 128 successfully perturbed
-square - 24/33 - 0 out of 128 successfully perturbed
