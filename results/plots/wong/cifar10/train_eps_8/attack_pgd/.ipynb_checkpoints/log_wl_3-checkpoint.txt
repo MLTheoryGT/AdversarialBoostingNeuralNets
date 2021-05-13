@@ -1,0 +1,10 @@
+initial accuracy: 80.27%
+apgd-ce - 1/7 - 58 out of 128 successfully perturbed
+apgd-ce - 2/7 - 61 out of 128 successfully perturbed
+apgd-ce - 3/7 - 53 out of 128 successfully perturbed
+apgd-ce - 4/7 - 55 out of 128 successfully perturbed
+apgd-ce - 5/7 - 53 out of 128 successfully perturbed
+apgd-ce - 6/7 - 47 out of 128 successfully perturbed
+apgd-ce - 7/7 - 26 out of 54 successfully perturbed
+robust accuracy after APGD-CE: 45.80% (total time 596.2 s)
+apgd-t - 1/4 - 13 out of 128 successfully perturbed
