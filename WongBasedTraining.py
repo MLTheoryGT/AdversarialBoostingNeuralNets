@@ -20,9 +20,10 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
         super().__init__(model_base, attack_eps)
     
     def fit(self, train_loader, test_loader, config):
-        np.random.seed(config["seed_wl"])
-        torch.manual_seed(config["seed_wl"])
-        torch.cuda.manual_seed(config["seed_wl"])
+        if config['seed_wl'] is not None:
+            np.random.seed(config["seed_wl"])
+            torch.manual_seed(seed=config["seed_wl"])
+            torch.cuda.manual_seed(seed=config["seed_wl"])
     
         if config['dataset_name'] == "cifar10":
             (std_tup, mu_tup, std, mu, upper_limit, lower_limit) = (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
