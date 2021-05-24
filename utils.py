@@ -111,3 +111,28 @@ def get_loaders(dir_, batch_size):
         num_workers=2,
     )
     return train_loader, test_loader
+
+class SnapshotEnsembleScheduler:
+    def __init__(self, opt, T, M, a0):
+        self.opt = opt
+        self.T = T
+        self.M = M
+        self.t = 0
+        self.lastLR = a0
+        self.a0 = a0
+
+    def step(self):
+        self.t+=1
+        newLR = self.a0/2*(np.cos((np.pi*((self.t - 1) % np.ceil(self.T/self.M)))/ np.ceil(self.T/self.M)) + 1)
+
+        for g in self.opt.param_groups:
+            g['lr'] = newLR
+
+        self.lastLR = newLR
+
+
+    def get_last_lr(self):
+        return [self.lastLR]
+
+    def snapshot(self):
+        return self.t % np.ceil(self.T/self.M) == 0

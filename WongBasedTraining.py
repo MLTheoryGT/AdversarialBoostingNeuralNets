@@ -10,9 +10,10 @@ import time
 from apex import amp
 # from torch.cuda import amp
 from utils import clamp
-
+from utils import SnapshotEnsembleScheduler
 from utils import (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
 from utils import (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
+
 
 
 class WongBasedTrainingCIFAR10(BaseNeuralNet):
@@ -47,7 +48,7 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
         model = self.model
         model.train()
 
-        opt = torch.optim.SGD(model.parameters(), lr=config['lr_max_wl'], momentum=config['momentum_wl'], weight_decay=config['weight_decay_wl'])
+        opt = torch.optim.SGD(model.parameters(), lr=(config['lr_max_wl'] if config['lr_schedule_wl'] != 'snapshot' else config['snapshot_a0_wl']), momentum=config['momentum_wl'], weight_decay=config['weight_decay_wl'])
         amp_args = dict(opt_level=config['opt_level_wl'], loss_scale=config['loss_scale_wl'], verbosity=False)
         if config['opt_level_wl'] == 'O2':
             amp_args['master_weights'] = True
@@ -67,12 +68,15 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
                 step_size_up=lr_steps / 2, step_size_down=lr_steps / 2)
         elif config['lr_schedule_wl'] == 'multistep':
             scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, milestones=[lr_steps / 2, lr_steps * 3 / 4], gamma=0.1)
+        elif config['lr_schedule_wl'] == 'snapshot':
+            scheduler = SnapshotEnsembleScheduler(opt, lr_steps, config["snapshot_cycles_wl"], config["snapshot_a0_wl"])
 
         # Training
         prev_robust_acc = 0.
         start_train_time = time.time()
         print('Epoch \t Seconds \t LR \t \t Train Loss \t Train Acc')
         currSamples = 0 # added
+        snapshots = 0
         for epoch in range(num_epochs):
             start_epoch_time = time.time()
             train_loss = 0
@@ -80,6 +84,7 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
             train_n = 0
             print("train_loader:", train_loader) #delete
             for i, data in enumerate(train_loader):
+#                 print("lr:", scheduler.get_last_lr())
                 X, y = data[0], data[1]
                 currSamples += train_loader.batch_size # added
                 X, y = X.cuda(), y.cuda()
@@ -111,6 +116,10 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
                 train_acc += (output.max(1)[1] == y).sum().item()
                 train_n += y.size(0)
                 scheduler.step()
+                if config["lr_schedule_wl"] == "snapshot" and scheduler.snapshot():
+                    print("doing snapshot, lr = ", scheduler.get_last_lr()[0])
+                    torch.save(model.state_dict(), config["save_dir"] + str(config["snapshot_cycles_wl"] - snapshots - 1) + '.pth')
+                    snapshots+=1
 #             if early_stop:
 #                 # Check current PGD robustness of model using random minibatch
 #                 X, y = first_batch
@@ -128,3 +137,6 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
         
         train_time = time.time()
         print('Total train time: %.4f minutes', (train_time - start_train_time)/60)
+    
+    
+
