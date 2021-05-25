@@ -10,6 +10,8 @@ import time
 from apex import amp
 # from torch.cuda import amp
 from utils import clamp
+from AdversarialAttacks import attack_pgd
+import copy
 
 from utils import (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
 from utils import (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
@@ -83,6 +85,8 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
                 X, y = data[0], data[1]
                 currSamples += train_loader.batch_size # added
                 X, y = X.cuda(), y.cuda()
+                if i == 0:
+                    first_batch = (X, y)
                 if config['delta_init_wl'] != 'previous':
                     delta = torch.zeros_like(X).cuda()
                 if config['delta_init_wl'] == 'random':
@@ -111,17 +115,17 @@ class WongBasedTrainingCIFAR10(BaseNeuralNet):
                 train_acc += (output.max(1)[1] == y).sum().item()
                 train_n += y.size(0)
                 scheduler.step()
-#             if early_stop:
-#                 # Check current PGD robustness of model using random minibatch
-#                 X, y = first_batch
-#                 pgd_delta = attack_pgd(model, X, y, epsilon, pgd_alpha, 5, 1, opt)
-#                 with torch.no_grad():
-#                     output = model(clamp(X + pgd_delta[:X.size(0)], lower_limit, upper_limit))
-#                 robust_acc = (output.max(1)[1] == y).sum().item() / y.size(0)
-#                 if robust_acc - prev_robust_acc < -0.2:
-#                     break
-#                 prev_robust_acc = robust_acc
-#                 best_state_dict = copy.deepcopy(model.state_dict())
+            if config['early_stop_wl']:
+                # Check current PGD robustness of model using random minibatch
+                X, y = first_batch
+                pgd_delta = attack_pgd(X, y, epsilon, model, 5, 1, config['dataset_name'], change_eps=False)
+                with torch.no_grad():
+                    output = model(clamp(X + pgd_delta[:X.size(0)], lower_limit, upper_limit))
+                robust_acc = (output.max(1)[1] == y).sum().item() / y.size(0)
+                if robust_acc - prev_robust_acc < -0.2:
+                    break
+                prev_robust_acc = robust_acc
+                best_state_dict = copy.deepcopy(model.state_dict())
             epoch_time = time.time()
             lr = scheduler.get_last_lr()[0]
             print('%d \t %.1f \t \t %.4f \t %.4f \t %.4f'%(epoch, epoch_time - start_epoch_time, lr, train_loss/train_n, train_acc/train_n))

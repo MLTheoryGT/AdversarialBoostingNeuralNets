@@ -33,7 +33,7 @@ python3 CIFARTrainBoosting.py --config_file Configs/tradesCIFAR10Train.json
 
 Training:
 
-
+python3 CIFARTrainBoosting.py --config_file Configs/wongCIFAR10Train.json
 
 
 Testing:
