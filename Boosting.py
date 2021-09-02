@@ -17,6 +17,9 @@ from Ensemble import Ensemble
 from AdversarialAttacks import attack_fgsm, attack_pgd
 import csv
 import os
+from autoattack.square import SquareAttack
+from autoattack.autopgd_base import APGDAttack_targeted
+# from SquareAttack import SquareAttack
 
 def SchapireWongMulticlassBoosting(config):
     print("attack_eps_wl: ", config['attack_eps_wl'])
@@ -94,13 +97,42 @@ def SchapireWongMulticlassBoosting(config):
         for advCounter, data in enumerate(train_loader_default):
             X = data[0].cuda()
             y = data[1].cuda()
+            # Maybe rewrite the below in a cleaner fashion?
+            is_specific = ('attack_name' in config and config['attack_name'])
+            
             if config["train_eps_wl"] == 0:
                 delta = 0
-            else:
+            elif not is_specific: # CHANGE
                 delta = attack_pgd(X, y, config['attack_eps_wl'][0], h_i.predict, restarts=1, attack_iters=20)
 #             delta = attack_fgsm(X, y, config['attack_eps_wl'][0], h_i.predict)
-            predictions = h_i.predict(X + delta).argmax(axis=1)
+            if 'attack_name' not in config or not config['attack_name']:
+                predictions = h_i.predict(X + delta).argmax(axis=1)
+            elif config['attack_name'] == 'square':
+                # Use eps=[0.127] since data is normalized
+                square = SquareAttack(h_i.predict, p_init=.8, n_queries=100, eps=0.127, norm='Linf',
+                n_restarts=1, seed=0, verbose=False, device=torch.device('cuda'), resc_schedule=False)
+                print("X shape:", X.shape)
+                x = X.clone().cuda()
+                if len(x.shape) == 3:
+                    x.unsqueeze_(dim=0)
+                print("x shape:", x.shape)
+                x_adv = square.perturb(X, y)
+                predictions = h_i.predict(x_adv).argmax(axis=1)
+            elif config['attack_name'] == 'apgd-t':
+                apgd = APGDAttack_targeted(h_i.predict, n_restarts=1, n_iter=100, verbose=False,
+                                          eps=0.127, norm='Linf', eot_iter=1, rho=.75, device='cuda')
+#                 apgd = APGDAttack(h_i.predict, n_restarts=5, n_iter=100, verbose=False,
+#                 eps=0.127, norm='Linf', eot_iter=1, rho=.75, device='cuda')
+#                 apgd.loss = 't'
+                x = X.clone().cuda()
+                if len(x.shape) == 3:
+                    x.unsqueeze_(dim=0)
+                x_adv = apgd.perturb(X, y)
+                predictions = h_i.predict(x_adv).argmax(axis=1)
+                
+            print("predictions shape:", predictions.shape)
             indices = predictions.detach().int().cpu().numpy()
+            print("indices shape:", indices.shape)
             upper_bound = min(len(train_loader_default.dataset), (advCounter + 1)*advBatchSize)
             allIndices[np.arange(advCounter*advBatchSize, upper_bound)] = indices
         

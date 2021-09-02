@@ -41,4 +41,25 @@ Testing:
 python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR10Test.json
 python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR100Test.json
 
+vv Never mind these
+python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR10Test.json --attack_name fab-t
+python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR10Test.json --attack_name square
+
+
+Snapshot:
+
+python3 CIFARTrainSnapshot.py --config_file Configs/wongCIFAR10TrainSnapshot.json
+python3 baseline_n_indep.py
+
+
+Square training:
+
+python3 CIFARTrainBoosting.py --config_file Configs/wongCIFAR10TrainSquare.json
+python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR10TestSquare.json
+
+APGD-t training
+
+python3 CIFARTrainBoosting.py --config_file Configs/wongCIFAR10TrainApgd.json
+python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR10TestApgd.json
+
 

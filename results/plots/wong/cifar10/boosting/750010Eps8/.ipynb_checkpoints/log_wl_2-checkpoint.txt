@@ -1,0 +1,20 @@
+initial accuracy: 79.20%
+apgd-ce - 1/7 - 46 out of 128 successfully perturbed
+apgd-ce - 2/7 - 58 out of 128 successfully perturbed
+apgd-ce - 3/7 - 52 out of 128 successfully perturbed
+apgd-ce - 4/7 - 51 out of 128 successfully perturbed
+apgd-ce - 5/7 - 59 out of 128 successfully perturbed
+apgd-ce - 6/7 - 55 out of 128 successfully perturbed
+apgd-ce - 7/7 - 15 out of 43 successfully perturbed
+robust accuracy after APGD-CE: 46.39% (total time 489.9 s)
+apgd-t - 1/4 - 16 out of 128 successfully perturbed
+apgd-t - 2/4 - 8 out of 128 successfully perturbed
+apgd-t - 3/4 - 10 out of 128 successfully perturbed
+apgd-t - 4/4 - 5 out of 91 successfully perturbed
+robust accuracy after APGD-T: 42.58% (total time 2952.0 s)
+fab-t - 1/4 - 0 out of 128 successfully perturbed
+fab-t - 2/4 - 0 out of 128 successfully perturbed
+fab-t - 3/4 - 0 out of 128 successfully perturbed
+fab-t - 4/4 - 0 out of 52 successfully perturbed
+robust accuracy after FAB-T: 42.58% (total time 7664.0 s)
+square - 1/4 - 0 out of 128 successfully perturbed

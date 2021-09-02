@@ -65,9 +65,8 @@ class Ensemble(Validator):
             learner.model = learner.model.to(torch.device('cuda:0'))
             learner.model.eval()
         prediction = learner.model(X)
-#         wLPredictions[:,:,i] = F.softmax(prediction, dim=1)
-        wLPredictions[:,:,i] = prediction
-        return wLPredictions
+        wLPredictions[:,:,i] = F.softmax(prediction, dim=1)
+#         wLPredictions[:,:,i] = prediction
             
             
     def getWLPredictions(self, X, k):
@@ -78,7 +77,7 @@ class Ensemble(Validator):
 
                     
         for i in range(T):
-            wLPredictions = self.getSingleWLPrediction(i, wLPredictions, X)
+            self.getSingleWLPrediction(i, wLPredictions, X)
         
         torch.cuda.empty_cache()
         
@@ -139,8 +138,8 @@ class Ensemble(Validator):
         del wLPredictions
         assert(output.shape == (len(X), k))
         
-#         output = F.normalize(output, p=1, dim=1)
-#         output = torch.log(output)
+        output = F.normalize(output, p=1, dim=1)
+        output = torch.log(output)
         return output
     
     def gradOptWeights(self, train_loader, num_samples=1000, train_eps=0.127):

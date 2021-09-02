@@ -23,8 +23,7 @@ epsilons = [0.127]
 # Training the ensemble
 
 def test_ensemble(test_config):
-    attackStr = "attack_pgd"
-    resultsPath = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/train_eps_{test_config['train_eps_wl']}/{attackStr}/"
+    resultsPath = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/boosting/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
     test_config['results_path'] = resultsPath
     if not os.path.exists(resultsPath):
         os.mkdir(resultsPath)
@@ -51,6 +50,7 @@ def get_args():
     # parser.add_argument("--testing_restarts", default=10, type=int)
     # parser.add_argument("--dataset_name", default='cifar10')
     parser.add_argument("--config_file", default="Configs/wongCIFAR10Test.json")
+    parser.add_argument("--attack_name", default = "")
 
     return parser.parse_args()
 
@@ -67,6 +67,9 @@ if __name__ == '__main__':
         test_config['dataset'] = datasets.CIFAR10
     elif test_config['dataset_name'] == 'cifar100':
         test_config['dataset'] = datasets.CIFAR100
+        
+    if len(args.attack_name):
+        test_config['attack_name'] = args.attack_name
 
     # TODO? change these to args?
     test_config['weak_learner_type'] = WongBasedTrainingCIFAR10

@@ -1,5 +1,5 @@
 {
-    "num_samples_wl": 30000,
+    "num_samples_wl": 750010,
     "num_wl": 15,
     "train_eps_wl": 8,
     "training_valrestarts": 1,

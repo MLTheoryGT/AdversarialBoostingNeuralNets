@@ -6,6 +6,7 @@ import numpy as np
 cuda = torch.device('cuda:0')
 from utils import (cifar10_std_tup, cifar10_mu_tup, cifar10_std, cifar10_mu, cifar10_upper_limit, cifar10_lower_limit)
 from utils import (cifar100_std_tup, cifar100_mu_tup, cifar100_std, cifar100_mu, cifar100_upper_limit, cifar100_lower_limit)
+from utils import SnapshotEnsembleScheduler
 
 def adjust_learning_rate(optimizer, epoch, config):
     """decrease the learning rate"""
@@ -48,13 +49,18 @@ class TradesBasedTrainingCIFAR10(BaseNeuralNet):
         
         epoch_size = len(train_loader.dataset)
         num_epochs = max(1, config["num_samples_wl"] // epoch_size)
-        # lr_steps = num_epochs * len(train_loader) For cyclic LR if we want
-
+        lr_steps = num_epochs * len(train_loader) # For cyclic LR if we want
+        if config["lr_schedule_wl"] == "snapshot":
+            scheduler = SnapshotEnsembleScheduler(opt, lr_steps, config["snapshot_cycles_wl"], config["snapshot_a0_wl"])
+            
         # Training
         currSamples = 0 # added
+        snapshots = 0
         for epoch in range(num_epochs):
             print("Epoch: ", epoch)
-            adjust_learning_rate(opt, epoch, config)
+            if config["lr_schedule_wl"] != "snapshot":
+                adjust_learning_rate(opt, epoch, config)
+                
             for i, data in enumerate(train_loader):
                 X, y = data[0], data[1]
                 currSamples += train_loader.batch_size # added
@@ -72,3 +78,12 @@ class TradesBasedTrainingCIFAR10(BaseNeuralNet):
                     beta=config["beta_wl"])
                 loss.backward()
                 opt.step()
+            
+                if config["lr_schedule_wl"] == "snapshot":
+                    scheduler.step()
+                
+                if config["lr_schedule_wl"] == "snapshot" and scheduler.snapshot():
+                    print("doing snapshot, lr = ", scheduler.get_last_lr()[0])
+                    torch.save(model.state_dict(), config["save_dir"] + str(config["snapshot_cycles_wl"] - snapshots - 1) + '.pth')
+                    snapshots+=1
+

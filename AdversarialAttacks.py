@@ -44,7 +44,7 @@ def attack_pgd_mnist(X, y, epsilon, model, alpha, attack_iters=5, restarts=1):
         max_loss = torch.max(max_loss, all_loss)
     return max_delta
 
-def attack_pgd(X, y, epsilon, model, attack_iters=20, restarts=1, dataset_name='cifar10'):
+def attack_pgd(X, y, epsilon, model, attack_iters=20, restarts=1, dataset_name='cifar10', change_eps=True):
 #     print("pgd called with", epsilon, alpha, attack_iters, restarts)
 #     alpha = alpha * 100
 #     print(alpha)
@@ -55,7 +55,8 @@ def attack_pgd(X, y, epsilon, model, attack_iters=20, restarts=1, dataset_name='
         (std, upper_limit, lower_limit) = (cifar100_std, cifar100_upper_limit, cifar100_lower_limit)
     alpha = (2/255.)/std
     
-    epsilon = torch.tensor([[[epsilon]], [[epsilon]], [[epsilon]]]).cuda()
+    if change_eps:
+        epsilon = torch.tensor([[[epsilon]], [[epsilon]], [[epsilon]]]).cuda()
     max_loss = torch.zeros(y.shape[0]).cuda()
     max_delta = torch.zeros_like(X).cuda()
     for zz in range(restarts):

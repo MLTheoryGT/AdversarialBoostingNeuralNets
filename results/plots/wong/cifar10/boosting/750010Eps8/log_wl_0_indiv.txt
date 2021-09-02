@@ -1,0 +1,45 @@
+initial accuracy: 77.93%
+apgd-ce - 1/7 - 64 out of 128 successfully perturbed
+apgd-ce - 2/7 - 57 out of 128 successfully perturbed
+apgd-ce - 3/7 - 57 out of 128 successfully perturbed
+apgd-ce - 4/7 - 43 out of 128 successfully perturbed
+apgd-ce - 5/7 - 54 out of 128 successfully perturbed
+apgd-ce - 6/7 - 52 out of 128 successfully perturbed
+apgd-ce - 7/7 - 10 out of 30 successfully perturbed
+robust accuracy after APGD-CE: 45.02% (total time 175.5 s)
+max Linf perturbation: 0.03100, nan in tensor: 0, max: 1.00000, min: 0.00000
+robust accuracy: 45.02%
+initial accuracy: 77.93%
+apgd-t - 1/7 - 64 out of 128 successfully perturbed
+apgd-t - 2/7 - 61 out of 128 successfully perturbed
+apgd-t - 3/7 - 60 out of 128 successfully perturbed
+apgd-t - 4/7 - 47 out of 128 successfully perturbed
+apgd-t - 5/7 - 57 out of 128 successfully perturbed
+apgd-t - 6/7 - 55 out of 128 successfully perturbed
+apgd-t - 7/7 - 12 out of 30 successfully perturbed
+robust accuracy after APGD-T: 43.16% (total time 1461.8 s)
+max Linf perturbation: 0.03100, nan in tensor: 0, max: 1.00000, min: 0.00000
+robust accuracy: 43.16%
+initial accuracy: 77.93%
+initial accuracy: 78.52%
+fab-t - 1/7 - 52 out of 128 successfully perturbed
+fab-t - 2/7 - 59 out of 128 successfully perturbed
+fab-t - 3/7 - 65 out of 128 successfully perturbed
+fab-t - 4/7 - 56 out of 128 successfully perturbed
+fab-t - 5/7 - 60 out of 128 successfully perturbed
+fab-t - 6/7 - 59 out of 128 successfully perturbed
+fab-t - 7/7 - 13 out of 36 successfully perturbed
+robust accuracy after FAB-T: 42.97% (total time 2886.7 s)
+max Linf perturbation: 0.03099, nan in tensor: 0, max: 1.00000, min: 0.00000
+robust accuracy: 42.97%
+initial accuracy: 78.52%
+square - 1/7 - 38 out of 128 successfully perturbed
+square - 2/7 - 43 out of 128 successfully perturbed
+square - 3/7 - 51 out of 128 successfully perturbed
+square - 4/7 - 37 out of 128 successfully perturbed
+square - 5/7 - 47 out of 128 successfully perturbed
+square - 6/7 - 48 out of 128 successfully perturbed
+square - 7/7 - 10 out of 36 successfully perturbed
+robust accuracy after SQUARE: 51.76% (total time 7168.3 s)
+max Linf perturbation: 0.03100, nan in tensor: 0, max: 1.00000, min: 0.00000
+robust accuracy: 51.76%

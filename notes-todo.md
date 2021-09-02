@@ -168,3 +168,15 @@ Things to do
         - Wong ? (us) 
         - Trades, PGD ? (Pranjal)
 - Compare with N independently trained models
+
+
+# May 24
+
+Other things to try
+- Different attack for pessimistic approach
+- Trades snapshot
+- 
+
+# Aug 28
+
+Finished training with apgd-t in 128122.652034  s
