@@ -23,8 +23,9 @@ epsilons = [0.127]
 # Training the ensemble
 
 def test_ensemble(test_config):
-    resultsPath = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/boosting/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
-    test_config['results_path'] = resultsPath
+#     resultsPath = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/boosting/{test_config['num_samples_wl']}Eps{test_config['train_eps_wl']}/"
+#     test_config['results_path'] = resultsPath
+    resultsPath = test_config["results_path"]
     if not os.path.exists(resultsPath):
         os.mkdir(resultsPath)
     ensemble = testEnsemble(test_config)

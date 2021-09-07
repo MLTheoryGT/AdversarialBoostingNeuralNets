@@ -2,6 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from utils import (cifar10_mu, cifar10_std, cifar100_mu, cifar100_std)
 
 class Flatten(nn.Module):
     def forward(self, x):
@@ -110,6 +111,10 @@ class PreActResNet(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
+    
+    def predictUnnormalizedDataCIFAR10(self, X):
+        X_norm = (X - cifar10_mu) / cifar10_std
+        return self.forward(X_norm)
 
 
 def PreActResNet18():

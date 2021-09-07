@@ -30,7 +30,7 @@ def testEnsemble(config):
     
     #mini loaders for ensemble
     # @Arvind, I think you may be able to change the batch size here
-    test_loader_mini = torch.utils.data.DataLoader(test_ds, batch_size=config['test_batch_size'], shuffle=True) #Note: change this to True when using a subset
+    test_loader_mini = torch.utils.data.DataLoader(test_ds, batch_size=config['test_batch_size'], shuffle=False) #Note: change this to True when using a subset
     train_loader_mini = torch.utils.data.DataLoader(train_ds,
         batch_size=config['train_batch_size'], shuffle=True) #change to True?
     
@@ -60,9 +60,11 @@ def testEnsemble(config):
     num_batches = 8
     xys = [(x, y) for (x, y) in test_loader_mini]
     l = [x for (x, y) in xys]
-    x_test = torch.cat(l[:num_batches], 0)
+    x_test = torch.cat(l, 0)
+#     x_test = torch.cat(l[:num_batches], 0) for doing less than the whole test set
     l = [y for (x, y) in xys]
-    y_test = torch.cat(l[:num_batches], 0)
+    y_test = torch.cat(l, 0)
+#     y_test = torch.cat(l[:num_batches], 0)
 
     for i in range(config['num_wl']):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
