@@ -62,4 +62,11 @@ APGD-t training
 python3 CIFARTrainBoosting.py --config_file Configs/wongCIFAR10TrainApgd.json
 python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR10TestApgd.json
 
+CIFAR-100
+
+python3 CIFARTrainBoosting.py --config_file Configs/wongCIFAR100Train.json
+python3 CIFARTestBoosting.py --config_file Configs/wongCIFAR100Test.json
+
+
+
 
