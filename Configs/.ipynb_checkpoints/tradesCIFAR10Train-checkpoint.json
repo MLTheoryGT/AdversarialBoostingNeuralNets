@@ -1,0 +1,18 @@
+{
+    "batch_size_wl": 128,
+    "num_samples_wl": 3800000,
+    "num_wl": 10,
+    "train_eps_wl": 0.031,
+    "training_valrestarts": 1,
+    "dataset_name": "cifar10",
+    "weight_decay_wl": 2e-4,
+    "lr_wl": 0.1,
+    "momentum_wl": 0.9,
+    "num_steps_wl": 10,
+    "step_size_wl": 0.007,
+    "beta_wl": 6.0,
+    "attack_iters_val_wl": 20,
+    "training_method": "trades",
+    "attack_eps_wl": [0.031],
+    "seed_wl": 0
+}

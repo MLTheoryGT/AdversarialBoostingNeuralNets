@@ -1,0 +1,4 @@
+initial accuracy: 53.42%
+apgd-ce - 1/5 - 53 out of 128 successfully perturbed
+apgd-ce - 2/5 - 68 out of 128 successfully perturbed
+apgd-ce - 3/5 - 66 out of 128 successfully perturbed
