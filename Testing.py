@@ -66,6 +66,8 @@ def testEnsemble(config):
     y_test = torch.cat(l, 0)
 #     y_test = torch.cat(l[:num_batches], 0)
 
+    min_wl = 0 # CHANGE
+
     for i in range(config['num_wl']):
         print("Weak Learner ", i, ".  Time Elapsed (s): ", (datetime.now()-startTime).seconds)
         ensemble.addWeakLearner(wl[i], wlWeights[i])
@@ -73,19 +75,21 @@ def testEnsemble(config):
 #         ensemble.gradOptWeights(train_loader_mini)
 #         ensemble.addWeakLearner(wl[i], 0.01)
 #         print("before ens acc", ensemble.accuracies)
-        if config["auto_attack"]:
-            adversary = AutoAttack(forwardPass, norm='Linf', eps=0.031, version='standard', log_path=config['results_path'] + f"log_wl_{i}.txt")
-            x_adv = adversary.run_standard_evaluation(x_test, y_test, bs=config["test_batch_size"])
-        
-#             Below is logic for attacking all examples with each attack
-#             attacks = ['apgd-ce', 'apgd-t', 'fab-t', 'square']
-#             for attack in attacks:
-#                 # NOTE: hardcoded eps=0.031
-#                 adversary = AutoAttack(forwardPass, norm='Linf', eps=0.031, version='standard', log_path=config['results_path'] + f"log_wl_{i}_indiv.txt")
-#                 adversary.attacks_to_run = [attack]
-#                 x_adv = adversary.run_standard_evaluation(x_test, y_test, bs=config["test_batch_size"])
-        else:
-            ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train=config['num_samples_train'], numsamples_val=config['num_samples_val'], val_attacks=config['val_attacks'], attack_iters=config['testing_attack_iters'], dataset_name=config['dataset_name'], restarts=config['testing_restarts'])
-            print("ensemble accuracies:", ensemble.accuracies)
+        if i >= min_wl:
+            if config["auto_attack"]:
+                adversary = AutoAttack(forwardPass, norm='Linf', eps=0.031, version='standard', log_path=config['results_path'] + f"log_wl_{i}.txt")
+                adversary.attacks_to_run = ['apgd-ce', 'apgd-t'] # REMOVE THIS
+                x_adv = adversary.run_standard_evaluation(x_test, y_test, bs=config["test_batch_size"])
+
+    #             Below is logic for attacking all examples with each attack
+    #             attacks = ['apgd-ce', 'apgd-t', 'fab-t', 'square']
+    #             for attack in attacks:
+    #                 # NOTE: hardcoded eps=0.031
+    #                 adversary = AutoAttack(forwardPass, norm='Linf', eps=0.031, version='standard', log_path=config['results_path'] + f"log_wl_{i}_indiv.txt")
+    #                 adversary.attacks_to_run = [attack]
+    #                 x_adv = adversary.run_standard_evaluation(x_test, y_test, bs=config["test_batch_size"])
+            else:
+                ensemble.record_accuracies(i, train_loader_mini, test_loader_mini, numsamples_train=config['num_samples_train'], numsamples_val=config['num_samples_val'], val_attacks=config['val_attacks'], attack_iters=config['testing_attack_iters'], dataset_name=config['dataset_name'], restarts=config['testing_restarts'])
+                print("ensemble accuracies:", ensemble.accuracies)
 
     return ensemble

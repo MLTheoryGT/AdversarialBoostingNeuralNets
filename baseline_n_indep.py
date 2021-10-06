@@ -93,6 +93,7 @@ test_config = {
     'weak_learner_type': WongBasedTrainingCIFAR10,
     'path': path_head
 }
+test_config['num_wl'] = 2
 
 test_config['results_path'] = f"results/plots/{test_config['training_method']}/{test_config['dataset_name']}/snapshot/train_eps_{test_config['train_eps_wl']}"
 # CHANGE
